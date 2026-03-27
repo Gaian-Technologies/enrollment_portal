@@ -30,6 +30,11 @@ The required values are:
 - `ENROLLMENT_PORTAL_SMTP_PORT`
 - `ENROLLMENT_PORTAL_SMTP_FROM_EMAIL`
 
+The verification flow does not work until the portal can reach a real SMTP
+relay with valid settings. If SMTP is still pointed at placeholder values, the
+request form will submit and then return `502 Bad Gateway` when email delivery
+fails.
+
 ## Start
 
 ```bash
@@ -48,6 +53,10 @@ Open the request page:
 ```text
 http://127.0.0.1:8100/request-access
 ```
+
+Before testing email delivery, replace the placeholder SMTP values in `.env`
+with a reachable mail relay and valid credentials if the relay requires
+authentication.
 
 ## Deployment Shape
 

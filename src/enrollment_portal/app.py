@@ -106,7 +106,7 @@ def create_app(settings: Settings) -> FastAPI:
                 page_title="Request access",
                 site_name=settings.site_name,
                 form_values=form_values,
-                form_error="Could not deliver the verification email. Check the address and try again.",
+                form_error="Could not deliver the verification email. The portal email relay is unavailable or misconfigured.",
                 status_code=502,
             )
         except ValidationError:

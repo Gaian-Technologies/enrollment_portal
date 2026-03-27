@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from email.message import EmailMessage
+import logging
 import smtplib
 
 from .config import Settings
+
+LOGGER = logging.getLogger(__name__)
 
 
 class EmailDeliveryError(Exception):
@@ -44,4 +47,11 @@ class EmailSender:
                     smtp.login(self._settings.smtp_username, self._settings.smtp_password)
                 smtp.send_message(message)
         except Exception as err:
+            LOGGER.exception(
+                "Failed to deliver verification email via SMTP host=%s port=%s starttls=%s auth_configured=%s",
+                self._settings.smtp_host,
+                self._settings.smtp_port,
+                self._settings.smtp_starttls,
+                bool(self._settings.smtp_username),
+            )
             raise EmailDeliveryError("failed_to_deliver_email") from err
