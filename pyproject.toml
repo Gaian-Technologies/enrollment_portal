@@ -21,6 +21,12 @@ dependencies = [
 [project.scripts]
 enrollment-portal = "enrollment_portal.main:main"
 
+[tool.hatch.build]
+include = [
+  "/src/enrollment_portal/static/*.css",
+  "/src/enrollment_portal/templates/*.html",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/enrollment_portal"]
 
