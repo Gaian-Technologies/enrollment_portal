@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "enrollment-portal"
+version = "0.1.0"
+description = "Email-verified enrollment token portal for data_hub."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "email-validator>=2.2.0,<3.0.0",
+  "fastapi>=0.115.0,<1.0.0",
+  "httpx>=0.28.0,<1.0.0",
+  "jinja2>=3.1.0,<4.0.0",
+  "pydantic>=2.9.0,<3.0.0",
+  "python-multipart>=0.0.9,<1.0.0",
+  "uvicorn[standard]>=0.34.0,<1.0.0",
+]
+
+[project.scripts]
+enrollment-portal = "enrollment_portal.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/enrollment_portal"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["ASYNC", "B", "E", "F", "I", "UP"]

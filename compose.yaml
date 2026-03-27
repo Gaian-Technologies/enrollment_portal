@@ -1,0 +1,11 @@
+services:
+  enrollment_portal:
+    build:
+      context: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8100:8100"
+    volumes:
+      - ./var:/app/var

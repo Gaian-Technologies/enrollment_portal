@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }} - {{ site_name }}</title>
+    <link rel="stylesheet" href="/static/main.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card">
+        <h1>Enrollment token issued</h1>
+        <p class="lede">Copy this token into the Home Assistant `ha_telemetry` setup flow.</p>
+        <pre class="token">{{ enrollment_token }}</pre>
+        {% if expires_at %}
+        <p>This token expires at {{ expires_at }}.</p>
+        {% endif %}
+      </section>
+    </main>
+  </body>
+</html>

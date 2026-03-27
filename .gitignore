@@ -1,0 +1,4 @@
+.env
+__pycache__/
+src/enrollment_portal/__pycache__/
+var/

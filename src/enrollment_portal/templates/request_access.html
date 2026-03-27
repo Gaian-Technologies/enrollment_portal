@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }} - {{ site_name }}</title>
+    <link rel="stylesheet" href="/static/main.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card">
+        <h1>Request access</h1>
+        <p class="lede">Enter your email address to receive a one-time verification link and enrollment token.</p>
+        {% if form_error %}
+        <div class="notice error">{{ form_error }}</div>
+        {% endif %}
+        <form method="post" action="/request-access" class="stack">
+          <label>
+            <span>Email address</span>
+            <input type="email" name="email" value="{{ form_values.email }}" required autocomplete="email">
+          </label>
+          <label>
+            <span>Name</span>
+            <input type="text" name="name" value="{{ form_values.name }}" autocomplete="name">
+          </label>
+          <button type="submit">Send verification email</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>
