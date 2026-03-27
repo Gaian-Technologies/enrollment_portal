@@ -36,6 +36,7 @@ def _render_template(
     **context,
 ) -> HTMLResponse:
     return TEMPLATES.TemplateResponse(
+        request,
         name,
         {
             "request": request,
