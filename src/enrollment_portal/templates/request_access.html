@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="/static/main.css">
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <script src="/static/request_access.js" defer></script>
+    {% if country_field_key %}
+    <script id="country-reference-specs" type="application/json">{{ country_reference_specs_json | safe }}</script>
+    {% endif %}
   </head>
   <body>
     <main class="shell">
@@ -33,14 +36,26 @@
             {% else %}
             <input type="text" name="{{ field.key }}" value="{{ form_values[field.key] }}" placeholder="{{ field.placeholder }}" {% if field.required %}required{% endif %}>
             {% endif %}
+            {% if field.description %}
+            <small class="field-help">{{ field.description }}</small>
+            {% endif %}
           </label>
           {% endfor %}
+          {% if country_field_key %}
+          <div id="site-reference-shell" class="stack field-shell" {% if not current_reference_spec %}hidden{% endif %}>
+            <label>
+              <span id="site-reference-label">{% if current_reference_spec %}{{ current_reference_spec.label }} (optional){% else %}Site reference{% endif %}</span>
+              <input type="text" id="site-reference-value" name="site_reference_value" value="{{ form_values.site_reference_value }}" autocomplete="off" {% if current_reference_spec %}placeholder="{{ current_reference_spec.placeholder }}"{% else %}disabled{% endif %}>
+              <small id="site-reference-help" class="field-help">{% if current_reference_spec %}{{ current_reference_spec.help_text }}{% endif %}</small>
+            </label>
+          </div>
+          {% endif %}
           <div class="turnstile-shell">
             <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>
           </div>
           <button type="submit">Send verification code</button>
         </form>
-        {% if country_options %}
+        {% if country_field_key and country_options %}
         <datalist id="country-options">
           {% for country in country_options %}
           <option value="{{ country }}"></option>

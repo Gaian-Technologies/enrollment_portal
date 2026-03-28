@@ -26,6 +26,7 @@ class SiteMetadataField:
     field_type: Literal["text", "country"]
     required: bool = False
     placeholder: str = ""
+    description: str = ""
 
 
 COUNTRY_NAMES: tuple[str, ...] = tuple(
@@ -63,6 +64,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
 
     fields: list[SiteMetadataField] = []
     seen_keys: set[str] = set()
+    country_field_count = 0
     for item in payload:
         if not isinstance(item, dict):
             raise ValueError("Each site metadata field must be a JSON object")
@@ -72,6 +74,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
         field_type = str(item.get("type", "text")).strip().lower()
         required = bool(item.get("required", False))
         placeholder = str(item.get("placeholder", "")).strip()
+        description = str(item.get("description", "")).strip()
 
         if not FIELD_KEY_PATTERN.fullmatch(key):
             raise ValueError("Site metadata field keys must be lower_snake_case")
@@ -82,6 +85,10 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
         if field_type not in SUPPORTED_FIELD_TYPES:
             raise ValueError(f"Unsupported site metadata field type: {field_type}")
         normalized_type: Literal["text", "country"] = "country" if field_type == "country" else "text"
+        if normalized_type == "country":
+            country_field_count += 1
+            if country_field_count > 1:
+                raise ValueError("Only one country field is supported")
 
         fields.append(
             SiteMetadataField(
@@ -90,6 +97,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
                 field_type=normalized_type,
                 required=required,
                 placeholder=placeholder,
+                description=description,
             )
         )
         seen_keys.add(key)
@@ -120,6 +128,15 @@ def normalize_site_metadata(
         normalized[field.key] = raw_value
 
     return normalized
+
+
+def get_country_field(fields: tuple[SiteMetadataField, ...]) -> SiteMetadataField | None:
+    """Return the configured country field if the portal uses one."""
+
+    for field in fields:
+        if field.field_type == "country":
+            return field
+    return None
 
 
 def _normalize_country(value: str) -> str:

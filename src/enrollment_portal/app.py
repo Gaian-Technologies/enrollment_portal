@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request, status
@@ -13,10 +14,21 @@ from pydantic import ValidationError
 
 from .config import Settings
 from .emailer import EmailDeliveryError
+from .electricity_reference_specs import (
+    ElectricityReferenceValidationError,
+    electricity_reference_specs_for_template,
+    get_electricity_reference_spec,
+    normalize_country_site_reference,
+)
 from .hub_client import HubAdminError
 from .models import AccessRequestCreate, HealthResponse, VerificationCodeSubmit
 from .runtime import PortalRuntime, RateLimitError, VerificationError
-from .site_metadata_fields import COUNTRY_NAMES, SiteMetadataValidationError, normalize_site_metadata
+from .site_metadata_fields import (
+    COUNTRY_NAMES,
+    SiteMetadataValidationError,
+    get_country_field,
+    normalize_site_metadata,
+)
 from .turnstile import HumanVerificationFailed, HumanVerificationUnavailable
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -64,6 +76,35 @@ def _empty_metadata_form_values(settings: Settings) -> dict[str, str]:
     return {field.key: "" for field in settings.site_metadata_fields}
 
 
+def _country_field_key(settings: Settings) -> str | None:
+    field = get_country_field(settings.site_metadata_fields)
+    return field.key if field is not None else None
+
+
+def _country_reference_specs_json() -> str:
+    return json.dumps(
+        electricity_reference_specs_for_template(),
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _current_reference_spec(settings: Settings, form_values: dict[str, str]) -> dict[str, str] | None:
+    country_field = get_country_field(settings.site_metadata_fields)
+    if country_field is None:
+        return None
+
+    spec = get_electricity_reference_spec(form_values.get(country_field.key, "").strip())
+    if spec is None:
+        return None
+
+    return {
+        "label": spec.label,
+        "help_text": spec.help_text,
+        "placeholder": spec.placeholder,
+    }
+
+
 def create_app(settings: Settings) -> FastAPI:
     runtime = PortalRuntime(settings)
 
@@ -95,9 +136,13 @@ def create_app(settings: Settings) -> FastAPI:
             turnstile_site_key=settings.turnstile_site_key,
             metadata_fields=settings.site_metadata_fields,
             country_options=COUNTRY_NAMES,
+            country_field_key=_country_field_key(settings),
+            country_reference_specs_json=_country_reference_specs_json(),
+            current_reference_spec=None,
             form_values={
                 "email": "",
                 "name": "",
+                "site_reference_value": "",
                 **_empty_metadata_form_values(settings),
             },
             form_error=None,
@@ -109,17 +154,33 @@ def create_app(settings: Settings) -> FastAPI:
         email = str(form.get("email", "") or "")
         name = str(form.get("name", "") or "")
         turnstile_response = str(form.get("cf-turnstile-response", "") or "")
+        site_reference_value = str(form.get("site_reference_value", "") or "")
         metadata_values = {
             field.key: str(form.get(field.key, "") or "")
             for field in settings.site_metadata_fields
         }
-        form_values = {"email": email, "name": name, **metadata_values}
+        form_values = {
+            "email": email,
+            "name": name,
+            "site_reference_value": site_reference_value,
+            **metadata_values,
+        }
 
         try:
+            normalized_metadata = normalize_site_metadata(settings.site_metadata_fields, metadata_values)
+            country_field = get_country_field(settings.site_metadata_fields)
+            country_value = (
+                normalized_metadata.get(country_field.key)
+                if country_field is not None
+                else None
+            )
             payload = AccessRequestCreate(
                 email=email,
                 name=name,
-                site_metadata=normalize_site_metadata(settings.site_metadata_fields, metadata_values),
+                site_metadata={
+                    **normalized_metadata,
+                    **normalize_country_site_reference(country_value, site_reference_value),
+                },
             )
             await runtime.submit_request(payload, _client_ip(request), turnstile_response)
         except RateLimitError:
@@ -131,6 +192,9 @@ def create_app(settings: Settings) -> FastAPI:
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
+                country_field_key=_country_field_key(settings),
+                country_reference_specs_json=_country_reference_specs_json(),
+                current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Too many requests. Wait and try again later.",
                 status_code=429,
@@ -144,6 +208,9 @@ def create_app(settings: Settings) -> FastAPI:
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
+                country_field_key=_country_field_key(settings),
+                country_reference_specs_json=_country_reference_specs_json(),
+                current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Complete the human verification and try again.",
                 status_code=400,
@@ -157,6 +224,9 @@ def create_app(settings: Settings) -> FastAPI:
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
+                country_field_key=_country_field_key(settings),
+                country_reference_specs_json=_country_reference_specs_json(),
+                current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Human verification is temporarily unavailable. Try again shortly.",
                 status_code=502,
@@ -170,6 +240,9 @@ def create_app(settings: Settings) -> FastAPI:
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
+                country_field_key=_country_field_key(settings),
+                country_reference_specs_json=_country_reference_specs_json(),
+                current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Could not deliver the verification email. The portal SES configuration or AWS access is unavailable.",
                 status_code=502,
@@ -183,6 +256,25 @@ def create_app(settings: Settings) -> FastAPI:
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
+                country_field_key=_country_field_key(settings),
+                country_reference_specs_json=_country_reference_specs_json(),
+                current_reference_spec=_current_reference_spec(settings, form_values),
+                form_values=form_values,
+                form_error=str(err),
+                status_code=400,
+            )
+        except ElectricityReferenceValidationError as err:
+            return _render_template(
+                request,
+                "request_access.html",
+                page_title="Request access",
+                site_name=settings.site_name,
+                turnstile_site_key=settings.turnstile_site_key,
+                metadata_fields=settings.site_metadata_fields,
+                country_options=COUNTRY_NAMES,
+                country_field_key=_country_field_key(settings),
+                country_reference_specs_json=_country_reference_specs_json(),
+                current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error=str(err),
                 status_code=400,
@@ -196,6 +288,9 @@ def create_app(settings: Settings) -> FastAPI:
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
+                country_field_key=_country_field_key(settings),
+                country_reference_specs_json=_country_reference_specs_json(),
+                current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Enter a valid email address and keep optional fields short.",
                 status_code=400,

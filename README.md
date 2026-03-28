@@ -120,22 +120,39 @@ The supported field types are:
 Example:
 
 ```dotenv
-ENROLLMENT_PORTAL_SITE_METADATA_FIELDS=[{"key":"country","label":"Country","type":"country","required":false},{"key":"study_group","label":"Study group","type":"text","required":false}]
+ENROLLMENT_PORTAL_SITE_METADATA_FIELDS=[{"key":"country","label":"Country","type":"country","required":false},{"key":"study_group","label":"Study group","type":"text","required":false,"description":"Optional study grouping label."}]
 ```
 
 `country` uses a native searchable country picker backed by a canonical list,
 rejects invalid values, and stores a canonical country name.
+If the selected country has a built-in electricity identifier mapping, the
+portal also reveals one optional secondary field and stores it generically as
+`site_reference_scheme` and `site_reference_value`.
 `text` uses a simple text input and stores the trimmed submitted value.
+Any configured `text` field may also include an optional `description` string.
+
+The initial built-in electricity identifier registry supports:
+
+- New Zealand: `ICP Number`
+- Australia: `NMI Number`
+- Ireland: `MPRN`
+- United Kingdom: `MPAN`
+- Portugal: `CPE`
+- Spain: `CUPS`
+- Italy: `POD`
+- Belgium: `EAN Code`
 
 The validated browser flow is:
 
 1. open `https://hub.example.com/request-access`
 2. complete the Turnstile challenge
 3. submit email and any optional site details
-4. receive the email verification code
-5. open `https://hub.example.com/verify`
-6. paste the code
-7. copy the issued `enrollment_token`
+4. if the selected country supports it, optionally enter the standardized
+   electricity site reference shown for that country
+5. receive the email verification code
+6. open `https://hub.example.com/verify`
+7. paste the code
+8. copy the issued `enrollment_token`
 
 For local Docker testing before EC2, also set:
 
