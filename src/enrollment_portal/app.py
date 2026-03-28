@@ -81,6 +81,11 @@ def _country_field_key(settings: Settings) -> str | None:
     return field.key if field is not None else None
 
 
+def _country_reference_enabled(settings: Settings) -> bool:
+    field = get_country_field(settings.site_metadata_fields)
+    return field.enable_electricity_reference if field is not None else False
+
+
 def _country_reference_specs_json() -> str:
     return json.dumps(
         electricity_reference_specs_for_template(),
@@ -90,6 +95,9 @@ def _country_reference_specs_json() -> str:
 
 
 def _current_reference_spec(settings: Settings, form_values: dict[str, str]) -> dict[str, str] | None:
+    if not _country_reference_enabled(settings):
+        return None
+
     country_field = get_country_field(settings.site_metadata_fields)
     if country_field is None:
         return None
@@ -137,7 +145,8 @@ def create_app(settings: Settings) -> FastAPI:
             metadata_fields=settings.site_metadata_fields,
             country_options=COUNTRY_NAMES,
             country_field_key=_country_field_key(settings),
-            country_reference_specs_json=_country_reference_specs_json(),
+            country_reference_enabled=_country_reference_enabled(settings),
+            country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
             current_reference_spec=None,
             form_values={
                 "email": "",
@@ -174,12 +183,17 @@ def create_app(settings: Settings) -> FastAPI:
                 if country_field is not None
                 else None
             )
+            site_reference_metadata = (
+                normalize_country_site_reference(country_value, site_reference_value)
+                if _country_reference_enabled(settings)
+                else {}
+            )
             payload = AccessRequestCreate(
                 email=email,
                 name=name,
                 site_metadata={
                     **normalized_metadata,
-                    **normalize_country_site_reference(country_value, site_reference_value),
+                    **site_reference_metadata,
                 },
             )
             await runtime.submit_request(payload, _client_ip(request), turnstile_response)
@@ -193,7 +207,8 @@ def create_app(settings: Settings) -> FastAPI:
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
                 country_field_key=_country_field_key(settings),
-                country_reference_specs_json=_country_reference_specs_json(),
+                country_reference_enabled=_country_reference_enabled(settings),
+                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
                 current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Too many requests. Wait and try again later.",
@@ -209,7 +224,8 @@ def create_app(settings: Settings) -> FastAPI:
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
                 country_field_key=_country_field_key(settings),
-                country_reference_specs_json=_country_reference_specs_json(),
+                country_reference_enabled=_country_reference_enabled(settings),
+                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
                 current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Complete the human verification and try again.",
@@ -225,7 +241,8 @@ def create_app(settings: Settings) -> FastAPI:
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
                 country_field_key=_country_field_key(settings),
-                country_reference_specs_json=_country_reference_specs_json(),
+                country_reference_enabled=_country_reference_enabled(settings),
+                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
                 current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Human verification is temporarily unavailable. Try again shortly.",
@@ -241,7 +258,8 @@ def create_app(settings: Settings) -> FastAPI:
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
                 country_field_key=_country_field_key(settings),
-                country_reference_specs_json=_country_reference_specs_json(),
+                country_reference_enabled=_country_reference_enabled(settings),
+                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
                 current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Could not deliver the verification email. The portal SES configuration or AWS access is unavailable.",
@@ -257,7 +275,8 @@ def create_app(settings: Settings) -> FastAPI:
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
                 country_field_key=_country_field_key(settings),
-                country_reference_specs_json=_country_reference_specs_json(),
+                country_reference_enabled=_country_reference_enabled(settings),
+                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
                 current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error=str(err),
@@ -273,7 +292,8 @@ def create_app(settings: Settings) -> FastAPI:
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
                 country_field_key=_country_field_key(settings),
-                country_reference_specs_json=_country_reference_specs_json(),
+                country_reference_enabled=_country_reference_enabled(settings),
+                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
                 current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error=str(err),
@@ -289,7 +309,8 @@ def create_app(settings: Settings) -> FastAPI:
                 metadata_fields=settings.site_metadata_fields,
                 country_options=COUNTRY_NAMES,
                 country_field_key=_country_field_key(settings),
-                country_reference_specs_json=_country_reference_specs_json(),
+                country_reference_enabled=_country_reference_enabled(settings),
+                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
                 current_reference_spec=_current_reference_spec(settings, form_values),
                 form_values=form_values,
                 form_error="Enter a valid email address and keep optional fields short.",

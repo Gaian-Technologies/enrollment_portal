@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/static/main.css">
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <script src="/static/request_access.js" defer></script>
-    {% if country_field_key %}
+    {% if country_reference_enabled %}
     <script id="country-reference-specs" type="application/json">{{ country_reference_specs_json | safe }}</script>
     {% endif %}
   </head>
@@ -41,7 +41,7 @@
             {% endif %}
           </label>
           {% endfor %}
-          {% if country_field_key %}
+          {% if country_reference_enabled %}
           <div id="site-reference-shell" class="stack field-shell" {% if not current_reference_spec %}hidden{% endif %}>
             <label>
               <span id="site-reference-label">{% if current_reference_spec %}{{ current_reference_spec.label }} (optional){% else %}Site reference{% endif %}</span>

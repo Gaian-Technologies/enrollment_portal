@@ -125,11 +125,19 @@ ENROLLMENT_PORTAL_SITE_METADATA_FIELDS=[{"key":"country","label":"Country","type
 
 `country` uses a native searchable country picker backed by a canonical list,
 rejects invalid values, and stores a canonical country name.
-If the selected country has a built-in electricity identifier mapping, the
-portal also reveals one optional secondary field and stores it generically as
-`site_reference_scheme` and `site_reference_value`.
 `text` uses a simple text input and stores the trimmed submitted value.
 Any configured `text` field may also include an optional `description` string.
+
+To add the optional country-specific electricity identifier field, enable it on
+the country field itself:
+
+```dotenv
+ENROLLMENT_PORTAL_SITE_METADATA_FIELDS=[{"key":"country","label":"Country","type":"country","required":false,"enable_electricity_reference":true}]
+```
+
+Only when `enable_electricity_reference` is `true` does the portal reveal the
+country-specific secondary field and store it generically as
+`site_reference_scheme` and `site_reference_value`.
 
 The initial built-in electricity identifier registry supports:
 

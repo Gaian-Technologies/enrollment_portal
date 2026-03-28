@@ -27,6 +27,7 @@ class SiteMetadataField:
     required: bool = False
     placeholder: str = ""
     description: str = ""
+    enable_electricity_reference: bool = False
 
 
 COUNTRY_NAMES: tuple[str, ...] = tuple(
@@ -75,6 +76,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
         required = bool(item.get("required", False))
         placeholder = str(item.get("placeholder", "")).strip()
         description = str(item.get("description", "")).strip()
+        enable_electricity_reference = bool(item.get("enable_electricity_reference", False))
 
         if not FIELD_KEY_PATTERN.fullmatch(key):
             raise ValueError("Site metadata field keys must be lower_snake_case")
@@ -89,6 +91,8 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
             country_field_count += 1
             if country_field_count > 1:
                 raise ValueError("Only one country field is supported")
+        elif enable_electricity_reference:
+            raise ValueError("enable_electricity_reference is only supported on country fields")
 
         fields.append(
             SiteMetadataField(
@@ -98,6 +102,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
                 required=required,
                 placeholder=placeholder,
                 description=description,
+                enable_electricity_reference=enable_electricity_reference,
             )
         )
         seen_keys.add(key)
