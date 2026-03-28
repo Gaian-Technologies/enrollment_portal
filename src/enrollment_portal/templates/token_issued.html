@@ -12,9 +12,7 @@
         <h1>Enrollment token issued</h1>
         <p class="lede">Copy this token into the Home Assistant `ha_telemetry` setup flow.</p>
         <pre class="token">{{ enrollment_token }}</pre>
-        {% if expires_at %}
-        <p>This token expires at {{ expires_at }}.</p>
-        {% endif %}
+        <p>This token expires in {{ invite_lifetime }}.</p>
       </section>
     </main>
   </body>

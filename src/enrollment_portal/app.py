@@ -47,6 +47,18 @@ def _render_template(
     )
 
 
+def _format_invite_lifetime(hours: int) -> str:
+    """Render the configured invite lifetime as simple user-facing text."""
+
+    if hours % 24 == 0:
+        days = hours // 24
+        unit = "day" if days == 1 else "days"
+        return f"{days} {unit}"
+
+    unit = "hour" if hours == 1 else "hours"
+    return f"{hours} {unit}"
+
+
 def create_app(settings: Settings) -> FastAPI:
     runtime = PortalRuntime(settings)
 
@@ -223,7 +235,7 @@ def create_app(settings: Settings) -> FastAPI:
             page_title="Enrollment token issued",
             site_name=settings.site_name,
             enrollment_token=invite.enrollment_token,
-            expires_at=invite.expires_at,
+            invite_lifetime=_format_invite_lifetime(settings.invite_expires_hours),
         )
 
     return app
