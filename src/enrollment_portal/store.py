@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
+import json
 from pathlib import Path
 import sqlite3
 
@@ -92,6 +93,7 @@ class RequestStore:
                     request_id TEXT PRIMARY KEY,
                     email TEXT NOT NULL,
                     name TEXT NOT NULL,
+                    site_metadata_json TEXT NOT NULL DEFAULT '{}',
                     client_ip TEXT NOT NULL,
                     status TEXT NOT NULL,
                     verification_code_hash TEXT NOT NULL UNIQUE,
@@ -105,6 +107,14 @@ class RequestStore:
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_access_requests_email ON access_requests(email)"
             )
+            columns = {
+                row[1]
+                for row in connection.execute("PRAGMA table_info(access_requests)")
+            }
+            if "site_metadata_json" not in columns:
+                connection.execute(
+                    "ALTER TABLE access_requests ADD COLUMN site_metadata_json TEXT NOT NULL DEFAULT '{}'"
+                )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_access_requests_ip ON access_requests(client_ip)"
             )
@@ -126,6 +136,7 @@ class RequestStore:
                     request_id,
                     email,
                     name,
+                    site_metadata_json,
                     client_ip,
                     status,
                     verification_code_hash,
@@ -133,12 +144,13 @@ class RequestStore:
                     verification_expires_at,
                     issued_at,
                     invite_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     record.request_id,
                     record.email,
                     record.name,
+                    json.dumps(record.site_metadata, sort_keys=True, separators=(",", ":")),
                     record.client_ip,
                     record.status,
                     record.verification_code_hash,
@@ -162,14 +174,26 @@ class RequestStore:
         with self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT request_id, email, name, client_ip, status, verification_code_hash,
+                SELECT request_id, email, name, site_metadata_json, client_ip, status, verification_code_hash,
                        requested_at, verification_expires_at, issued_at, invite_id
                 FROM access_requests
                 WHERE verification_code_hash = ?
                 """,
                 (verification_code_hash,),
             ).fetchone()
-        return dict(row) if row is not None else None
+        if row is None:
+            return None
+        payload = dict(row)
+        raw_metadata = payload.pop("site_metadata_json", "")
+        try:
+            decoded = json.loads(raw_metadata) if raw_metadata else {}
+        except json.JSONDecodeError:
+            decoded = {}
+        payload["site_metadata"] = {
+            str(key): str(value)
+            for key, value in decoded.items()
+        } if isinstance(decoded, dict) else {}
+        return payload
 
     def _mark_request_issued_sync(self, request_id: str, invite_id: str, issued_at: str) -> None:
         with self._connect() as connection:

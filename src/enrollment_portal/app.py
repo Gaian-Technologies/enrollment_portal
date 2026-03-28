@@ -88,7 +88,7 @@ def create_app(settings: Settings) -> FastAPI:
             page_title="Request access",
             site_name=settings.site_name,
             turnstile_site_key=settings.turnstile_site_key,
-            form_values={"email": "", "name": ""},
+            form_values={"email": "", "name": "", "country": ""},
             form_error=None,
         )
 
@@ -97,12 +97,13 @@ def create_app(settings: Settings) -> FastAPI:
         request: Request,
         email: str = Form(...),
         name: str = Form(default=""),
+        country: str = Form(default=""),
         turnstile_response: str = Form(default="", alias="cf-turnstile-response"),
     ) -> HTMLResponse:
-        form_values = {"email": email, "name": name}
+        form_values = {"email": email, "name": name, "country": country}
 
         try:
-            payload = AccessRequestCreate(email=email, name=name)
+            payload = AccessRequestCreate(email=email, name=name, country=country)
             await runtime.submit_request(payload, _client_ip(request), turnstile_response)
         except RateLimitError:
             return _render_template(
@@ -156,7 +157,7 @@ def create_app(settings: Settings) -> FastAPI:
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
                 form_values=form_values,
-                form_error="Enter a valid email address and a short name if provided.",
+                form_error="Enter a valid email address and keep optional fields short.",
                 status_code=400,
             )
 

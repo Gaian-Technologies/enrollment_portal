@@ -11,7 +11,7 @@
     <main class="shell">
       <section class="card">
         <h1>Request access</h1>
-        <p class="lede">Enter your email address to receive a one-time verification code and enrollment token.</p>
+        <p class="lede">Enter your email address, an optional name, and any optional site details to receive a one-time verification code and enrollment token.</p>
         {% if form_error %}
         <div class="notice error">{{ form_error }}</div>
         {% endif %}
@@ -23,6 +23,10 @@
           <label>
             <span>Name</span>
             <input type="text" name="name" value="{{ form_values.name }}" autocomplete="name">
+          </label>
+          <label>
+            <span>Country</span>
+            <input type="text" name="country" value="{{ form_values.country }}" autocomplete="country-name">
           </label>
           <div class="turnstile-shell">
             <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>

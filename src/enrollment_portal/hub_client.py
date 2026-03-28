@@ -17,9 +17,11 @@ async def issue_enrollment_invite(
     *,
     request_id: str,
     email: str,
+    site_metadata: dict[str, str],
 ) -> InviteIssueResponse:
     payload = {
         "note": f"portal:{request_id}:{email}",
+        "site_metadata": site_metadata,
         "max_uses": 1,
         "expires_in_hours": settings.invite_expires_hours,
     }

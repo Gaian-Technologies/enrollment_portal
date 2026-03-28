@@ -8,7 +8,7 @@ It is intentionally separate from `data_hub`.
 The supported workflow is:
 
 1. user opens the portal page
-2. user enters an email address and optional name
+2. user enters an email address, an optional name, and optional site metadata such as country
 3. portal sends a verification code through Amazon SES
 4. user enters that code in the portal
 5. portal calls the private `data_hub` admin invite API
@@ -84,7 +84,7 @@ Create one Cloudflare Turnstile widget for the public Hub hostname.
 The validated public setup uses:
 
 - widget mode: `managed`
-- hostname: `hub.gaiantechnologies.com`
+- hostname: `hub.example.com`
 
 Then copy the real widget keys into:
 
@@ -101,19 +101,19 @@ docker compose up -d --build
 The exact setup sequence is:
 
 1. create the Turnstile widget in Cloudflare
-2. set the hostname to `hub.gaiantechnologies.com`
+2. set the hostname to `hub.example.com`
 3. keep the widget mode as `managed`
 4. copy the real site key and secret key into `.env`
 5. rebuild the portal container
-6. test the public flow at `https://hub.gaiantechnologies.com/request-access`
+6. test the public flow at `https://hub.example.com/request-access`
 
 The validated browser flow is:
 
-1. open `https://hub.gaiantechnologies.com/request-access`
+1. open `https://hub.example.com/request-access`
 2. complete the Turnstile challenge
-3. submit name and email
+3. submit email and any optional site details
 4. receive the email verification code
-5. open `https://hub.gaiantechnologies.com/verify`
+5. open `https://hub.example.com/verify`
 6. paste the code
 7. copy the issued `enrollment_token`
 
@@ -169,6 +169,7 @@ The service stores:
 
 - request email
 - optional name
+- optional site metadata such as country
 - client IP
 - request timestamps
 - issued `invite_id`

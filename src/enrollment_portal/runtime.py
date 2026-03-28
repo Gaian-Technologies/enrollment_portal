@@ -68,6 +68,7 @@ class PortalRuntime:
             request_id=secrets.token_hex(12),
             email=str(payload.email).strip().lower(),
             name=payload.name,
+            site_metadata=payload.site_metadata(),
             client_ip=client_ip,
             status="pending_verification",
             verification_code_hash=hash_token(normalize_verification_code(verification_code)),
@@ -102,6 +103,7 @@ class PortalRuntime:
             self.settings,
             request_id=request.request_id,
             email=request.email,
+            site_metadata=request.site_metadata,
         )
         await self.store.mark_request_issued(
             request.request_id,

@@ -27,6 +27,7 @@ class AccessRequestCreate(BaseModel):
 
     email: EmailStr
     name: str = ""
+    country: str = ""
 
     @field_validator("name")
     @classmethod
@@ -35,6 +36,20 @@ class AccessRequestCreate(BaseModel):
         if len(cleaned) > 120:
             raise ValueError("name must be 120 characters or fewer")
         return cleaned
+
+    @field_validator("country")
+    @classmethod
+    def normalize_country(cls, value: str) -> str:
+        cleaned = value.strip()
+        if len(cleaned) > 120:
+            raise ValueError("country must be 120 characters or fewer")
+        return cleaned
+
+    def site_metadata(self) -> dict[str, str]:
+        metadata: dict[str, str] = {}
+        if self.country:
+            metadata["country"] = self.country
+        return metadata
 
 
 class AccessRequestRecord(BaseModel):
@@ -45,6 +60,7 @@ class AccessRequestRecord(BaseModel):
     request_id: str
     email: str
     name: str
+    site_metadata: dict[str, str] = Field(default_factory=dict)
     client_ip: str
     status: Literal["pending_verification", "token_issued"]
     verification_code_hash: str
