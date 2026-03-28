@@ -29,16 +29,15 @@ async def issue_enrollment_invite(
     }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.post(
-            settings.hub_admin_api_url,
-            json=payload,
-            headers=headers,
-        )
-
-    try:
-        response.raise_for_status()
-    except httpx.HTTPError as err:
-        raise HubAdminError("failed_to_issue_invite") from err
+        try:
+            response = await client.post(
+                settings.hub_admin_api_url,
+                json=payload,
+                headers=headers,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as err:
+            raise HubAdminError("failed_to_issue_invite") from err
 
     try:
         return InviteIssueResponse.model_validate(response.json())

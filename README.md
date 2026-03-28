@@ -32,6 +32,10 @@ The required values are:
 The supported delivery path is Amazon SES using the standard AWS credential
 chain.
 
+The supported container runtime is a Linux host with Docker host networking.
+The portal binds to `127.0.0.1:8100`, stays local-only, and reaches the
+private Hub admin API on `127.0.0.1:8000`.
+
 On EC2, the portal should use the instance role.
 For local Docker testing, the supported path is a read-only mount of the
 operator's `~/.aws` directory with `AWS_PROFILE` set to a deployment-capable
@@ -69,6 +73,8 @@ with the real SES region and verified sender address.
 For local Docker testing before EC2, also set:
 
 - `AWS_PROFILE=deployment`
+- `ENROLLMENT_PORTAL_BIND_HOST=127.0.0.1`
+- `ENROLLMENT_PORTAL_HUB_ADMIN_API_URL=http://127.0.0.1:8000/api/v1/admin/invites`
 
 and make sure that named profile exists in `~/.aws/credentials` and
 `~/.aws/config` on the host running Docker Compose.
@@ -82,8 +88,8 @@ The supported deployment shape is one public Hub domain with Nginx routing:
 - `/api/v1/enrollment` -> `data_hub`
 
 This service should not be exposed directly on a public high port.
-Run it on `127.0.0.1:8100` and publish it through the same host Nginx instance
-that already fronts `data_hub`.
+Run it on `127.0.0.1:8100` with host networking and publish it through the
+same host Nginx instance that already fronts `data_hub`.
 
 Before public launch, add:
 
