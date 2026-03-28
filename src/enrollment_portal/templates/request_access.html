@@ -6,6 +6,7 @@
     <title>{{ page_title }} - {{ site_name }}</title>
     <link rel="stylesheet" href="/static/main.css">
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script src="/static/request_access.js" defer></script>
   </head>
   <body>
     <main class="shell">
@@ -24,15 +25,28 @@
             <span>Name</span>
             <input type="text" name="name" value="{{ form_values.name }}" autocomplete="name">
           </label>
+          {% for field in metadata_fields %}
           <label>
-            <span>Country</span>
-            <input type="text" name="country" value="{{ form_values.country }}" autocomplete="country-name">
+            <span>{{ field.label }}{% if not field.required %} (optional){% endif %}</span>
+            {% if field.field_type == "country" %}
+            <input type="text" name="{{ field.key }}" value="{{ form_values[field.key] }}" list="country-options" autocomplete="country-name" data-country-field="true" {% if field.required %}required{% endif %}>
+            {% else %}
+            <input type="text" name="{{ field.key }}" value="{{ form_values[field.key] }}" placeholder="{{ field.placeholder }}" {% if field.required %}required{% endif %}>
+            {% endif %}
           </label>
+          {% endfor %}
           <div class="turnstile-shell">
             <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>
           </div>
           <button type="submit">Send verification code</button>
         </form>
+        {% if country_options %}
+        <datalist id="country-options">
+          {% for country in country_options %}
+          <option value="{{ country }}"></option>
+          {% endfor %}
+        </datalist>
+        {% endif %}
         <p><a href="/verify">Already have a code?</a></p>
       </section>
     </main>

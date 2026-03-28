@@ -68,7 +68,7 @@ class PortalRuntime:
             request_id=secrets.token_hex(12),
             email=str(payload.email).strip().lower(),
             name=payload.name,
-            site_metadata=payload.site_metadata(),
+            site_metadata=payload.site_metadata,
             client_ip=client_ip,
             status="pending_verification",
             verification_code_hash=hash_token(normalize_verification_code(verification_code)),

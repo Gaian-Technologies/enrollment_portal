@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+
+from .site_metadata_fields import SiteMetadataField, load_site_metadata_fields
+
+
 def _get_required(name: str) -> str:
     value = os.getenv(name)
     if value is None or not value.strip():
@@ -43,6 +47,7 @@ class Settings:
     ses_configuration_set: str
     turnstile_site_key: str
     turnstile_secret_key: str
+    site_metadata_fields: tuple[SiteMetadataField, ...]
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -63,6 +68,9 @@ class Settings:
             ses_configuration_set=os.getenv("ENROLLMENT_PORTAL_SES_CONFIGURATION_SET", "").strip(),
             turnstile_site_key=_get_required("ENROLLMENT_PORTAL_TURNSTILE_SITE_KEY"),
             turnstile_secret_key=_get_required("ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY"),
+            site_metadata_fields=load_site_metadata_fields(
+                os.getenv("ENROLLMENT_PORTAL_SITE_METADATA_FIELDS", "")
+            ),
         )
 
     def verification_page_url(self) -> str:

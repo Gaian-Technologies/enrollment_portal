@@ -27,7 +27,7 @@ class AccessRequestCreate(BaseModel):
 
     email: EmailStr
     name: str = ""
-    country: str = ""
+    site_metadata: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("name")
     @classmethod
@@ -37,19 +37,14 @@ class AccessRequestCreate(BaseModel):
             raise ValueError("name must be 120 characters or fewer")
         return cleaned
 
-    @field_validator("country")
+    @field_validator("site_metadata")
     @classmethod
-    def normalize_country(cls, value: str) -> str:
-        cleaned = value.strip()
-        if len(cleaned) > 120:
-            raise ValueError("country must be 120 characters or fewer")
-        return cleaned
-
-    def site_metadata(self) -> dict[str, str]:
-        metadata: dict[str, str] = {}
-        if self.country:
-            metadata["country"] = self.country
-        return metadata
+    def normalize_site_metadata(cls, value: dict[str, str]) -> dict[str, str]:
+        return {
+            str(key).strip(): str(item).strip()
+            for key, item in value.items()
+            if str(key).strip() and str(item).strip()
+        }
 
 
 class AccessRequestRecord(BaseModel):

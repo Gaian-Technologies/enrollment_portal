@@ -16,6 +16,7 @@ from .emailer import EmailDeliveryError
 from .hub_client import HubAdminError
 from .models import AccessRequestCreate, HealthResponse, VerificationCodeSubmit
 from .runtime import PortalRuntime, RateLimitError, VerificationError
+from .site_metadata_fields import COUNTRY_NAMES, SiteMetadataValidationError, normalize_site_metadata
 from .turnstile import HumanVerificationFailed, HumanVerificationUnavailable
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -59,6 +60,10 @@ def _format_invite_lifetime(hours: int) -> str:
     return f"{hours} {unit}"
 
 
+def _empty_metadata_form_values(settings: Settings) -> dict[str, str]:
+    return {field.key: "" for field in settings.site_metadata_fields}
+
+
 def create_app(settings: Settings) -> FastAPI:
     runtime = PortalRuntime(settings)
 
@@ -88,22 +93,34 @@ def create_app(settings: Settings) -> FastAPI:
             page_title="Request access",
             site_name=settings.site_name,
             turnstile_site_key=settings.turnstile_site_key,
-            form_values={"email": "", "name": "", "country": ""},
+            metadata_fields=settings.site_metadata_fields,
+            country_options=COUNTRY_NAMES,
+            form_values={
+                "email": "",
+                "name": "",
+                **_empty_metadata_form_values(settings),
+            },
             form_error=None,
         )
 
     @app.post("/request-access", response_class=HTMLResponse)
-    async def request_access_submit(
-        request: Request,
-        email: str = Form(...),
-        name: str = Form(default=""),
-        country: str = Form(default=""),
-        turnstile_response: str = Form(default="", alias="cf-turnstile-response"),
-    ) -> HTMLResponse:
-        form_values = {"email": email, "name": name, "country": country}
+    async def request_access_submit(request: Request) -> HTMLResponse:
+        form = await request.form()
+        email = str(form.get("email", "") or "")
+        name = str(form.get("name", "") or "")
+        turnstile_response = str(form.get("cf-turnstile-response", "") or "")
+        metadata_values = {
+            field.key: str(form.get(field.key, "") or "")
+            for field in settings.site_metadata_fields
+        }
+        form_values = {"email": email, "name": name, **metadata_values}
 
         try:
-            payload = AccessRequestCreate(email=email, name=name, country=country)
+            payload = AccessRequestCreate(
+                email=email,
+                name=name,
+                site_metadata=normalize_site_metadata(settings.site_metadata_fields, metadata_values),
+            )
             await runtime.submit_request(payload, _client_ip(request), turnstile_response)
         except RateLimitError:
             return _render_template(
@@ -112,6 +129,8 @@ def create_app(settings: Settings) -> FastAPI:
                 page_title="Request access",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
+                metadata_fields=settings.site_metadata_fields,
+                country_options=COUNTRY_NAMES,
                 form_values=form_values,
                 form_error="Too many requests. Wait and try again later.",
                 status_code=429,
@@ -123,6 +142,8 @@ def create_app(settings: Settings) -> FastAPI:
                 page_title="Request access",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
+                metadata_fields=settings.site_metadata_fields,
+                country_options=COUNTRY_NAMES,
                 form_values=form_values,
                 form_error="Complete the human verification and try again.",
                 status_code=400,
@@ -134,6 +155,8 @@ def create_app(settings: Settings) -> FastAPI:
                 page_title="Request access",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
+                metadata_fields=settings.site_metadata_fields,
+                country_options=COUNTRY_NAMES,
                 form_values=form_values,
                 form_error="Human verification is temporarily unavailable. Try again shortly.",
                 status_code=502,
@@ -145,9 +168,24 @@ def create_app(settings: Settings) -> FastAPI:
                 page_title="Request access",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
+                metadata_fields=settings.site_metadata_fields,
+                country_options=COUNTRY_NAMES,
                 form_values=form_values,
                 form_error="Could not deliver the verification email. The portal SES configuration or AWS access is unavailable.",
                 status_code=502,
+            )
+        except SiteMetadataValidationError as err:
+            return _render_template(
+                request,
+                "request_access.html",
+                page_title="Request access",
+                site_name=settings.site_name,
+                turnstile_site_key=settings.turnstile_site_key,
+                metadata_fields=settings.site_metadata_fields,
+                country_options=COUNTRY_NAMES,
+                form_values=form_values,
+                form_error=str(err),
+                status_code=400,
             )
         except ValidationError:
             return _render_template(
@@ -156,6 +194,8 @@ def create_app(settings: Settings) -> FastAPI:
                 page_title="Request access",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
+                metadata_fields=settings.site_metadata_fields,
+                country_options=COUNTRY_NAMES,
                 form_values=form_values,
                 form_error="Enter a valid email address and keep optional fields short.",
                 status_code=400,

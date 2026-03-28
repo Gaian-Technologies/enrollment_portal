@@ -30,6 +30,7 @@ The required values are:
 - `ENROLLMENT_PORTAL_SES_FROM_EMAIL`
 - `ENROLLMENT_PORTAL_TURNSTILE_SITE_KEY`
 - `ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY`
+- `ENROLLMENT_PORTAL_SITE_METADATA_FIELDS`
 
 The supported delivery path is Amazon SES using the standard AWS credential
 chain.
@@ -106,6 +107,25 @@ The exact setup sequence is:
 4. copy the real site key and secret key into `.env`
 5. rebuild the portal container
 6. test the public flow at `https://hub.example.com/request-access`
+
+Site metadata fields are configured through:
+
+- `ENROLLMENT_PORTAL_SITE_METADATA_FIELDS`
+
+The supported field types are:
+
+- `text`
+- `country`
+
+Example:
+
+```dotenv
+ENROLLMENT_PORTAL_SITE_METADATA_FIELDS=[{"key":"country","label":"Country","type":"country","required":false},{"key":"study_group","label":"Study group","type":"text","required":false}]
+```
+
+`country` uses a native searchable country picker backed by a canonical list,
+rejects invalid values, and stores a canonical country name.
+`text` uses a simple text input and stores the trimmed submitted value.
 
 The validated browser flow is:
 
