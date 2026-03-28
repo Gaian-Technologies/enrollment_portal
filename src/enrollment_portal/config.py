@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
-from urllib.parse import quote
-
-
 def _get_required(name: str) -> str:
     value = os.getenv(name)
     if value is None or not value.strip():
@@ -64,5 +61,7 @@ class Settings:
             ses_configuration_set=os.getenv("ENROLLMENT_PORTAL_SES_CONFIGURATION_SET", "").strip(),
         )
 
-    def verification_url(self, token: str) -> str:
-        return f"{self.public_base_url}/verify?token={quote(token)}"
+    def verification_page_url(self) -> str:
+        """Return the public page where users enter the emailed verification code."""
+
+        return f"{self.public_base_url}/verify"

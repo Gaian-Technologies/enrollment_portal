@@ -1,4 +1,4 @@
-"""Runtime orchestration for request intake, verification, SES delivery, and invite issuance."""
+"""Runtime orchestration for request intake, code verification, SES delivery, and invite issuance."""
 
 from __future__ import annotations
 
@@ -9,7 +9,13 @@ import secrets
 from .config import Settings
 from .emailer import EmailDeliveryError, EmailSender
 from .hub_client import HubAdminError, issue_enrollment_invite
-from .models import AccessRequestCreate, AccessRequestRecord, InviteIssueResponse
+from .models import (
+    AccessRequestCreate,
+    AccessRequestRecord,
+    InviteIssueResponse,
+    VerificationCodeSubmit,
+    normalize_verification_code,
+)
 from .store import RequestStore
 
 
@@ -18,7 +24,7 @@ class RateLimitError(Exception):
 
 
 class VerificationError(Exception):
-    """Raised when a verification link is invalid, expired, or already used."""
+    """Raised when a verification code is invalid, expired, or already used."""
 
 
 def utcnow() -> datetime:
@@ -27,6 +33,16 @@ def utcnow() -> datetime:
 
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+VERIFICATION_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def generate_verification_code() -> str:
+    """Generate a short human-entered code without visually ambiguous characters."""
+
+    raw = "".join(secrets.choice(VERIFICATION_CODE_ALPHABET) for _ in range(12))
+    return f"{raw[:4]}-{raw[4:8]}-{raw[8:]}"
 
 
 class PortalRuntime:
@@ -43,7 +59,7 @@ class PortalRuntime:
     async def submit_request(self, payload: AccessRequestCreate, client_ip: str) -> None:
         await self._enforce_rate_limits(payload.email, client_ip)
 
-        token = secrets.token_urlsafe(32)
+        verification_code = generate_verification_code()
         requested_at = utcnow()
         record = AccessRequestRecord(
             request_id=secrets.token_hex(12),
@@ -51,7 +67,7 @@ class PortalRuntime:
             name=payload.name,
             client_ip=client_ip,
             status="pending_verification",
-            token_hash=hash_token(token),
+            verification_code_hash=hash_token(normalize_verification_code(verification_code)),
             requested_at=requested_at,
             verification_expires_at=requested_at + timedelta(minutes=self.settings.verification_ttl_minutes),
             issued_at=None,
@@ -63,20 +79,21 @@ class PortalRuntime:
             self.emailer.send_verification_email(
                 email=record.email,
                 name=record.name,
-                verification_url=self.settings.verification_url(token),
+                verification_code=verification_code,
+                verification_page_url=self.settings.verification_page_url(),
             )
         except Exception:
             await self.store.delete_request(record.request_id)
             raise
 
-    async def verify_request(self, token: str) -> InviteIssueResponse:
-        request = await self.store.get_request_by_token_hash(hash_token(token.strip()))
+    async def verify_request(self, payload: VerificationCodeSubmit) -> InviteIssueResponse:
+        request = await self.store.get_request_by_verification_code_hash(hash_token(payload.code))
         if request is None:
-            raise VerificationError("invalid_or_expired_link")
+            raise VerificationError("invalid_or_expired_code")
         if request.status != "pending_verification":
-            raise VerificationError("verification_link_already_used")
+            raise VerificationError("verification_code_already_used")
         if request.verification_expires_at <= utcnow():
-            raise VerificationError("invalid_or_expired_link")
+            raise VerificationError("invalid_or_expired_code")
 
         invite = await issue_enrollment_invite(
             self.settings,

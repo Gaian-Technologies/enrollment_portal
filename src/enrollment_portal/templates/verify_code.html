@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }} - {{ site_name }}</title>
+    <link rel="stylesheet" href="/static/main.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card">
+        <h1>{{ heading }}</h1>
+        <p class="lede">{{ lede }}</p>
+        {% if email %}
+        <p>A code was sent to <strong>{{ email }}</strong>.</p>
+        {% endif %}
+        {% if form_error %}
+        <div class="notice error">{{ form_error }}</div>
+        {% endif %}
+        <form method="post" action="/verify" class="stack">
+          <label>
+            <span>Verification code</span>
+            <input type="text" name="code" value="{{ form_values.code }}" required autocomplete="one-time-code" autocapitalize="characters" spellcheck="false">
+          </label>
+          <button type="submit">Verify email</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,4 +1,4 @@
-"""Typed models for access requests, invite issuance, and health responses."""
+"""Typed models for access requests, verification codes, and invite issuance."""
 
 from __future__ import annotations
 
@@ -8,6 +8,16 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 STRICT_MODEL_CONFIG = ConfigDict(extra="forbid")
+
+
+def normalize_verification_code(value: str) -> str:
+    """Canonicalize user-entered verification codes.
+
+    The portal accepts pasted codes with spaces or hyphens so the email format
+    can stay human-readable without affecting the stored hash.
+    """
+
+    return "".join(char for char in value.upper() if char.isalnum())
 
 
 class AccessRequestCreate(BaseModel):
@@ -37,17 +47,33 @@ class AccessRequestRecord(BaseModel):
     name: str
     client_ip: str
     status: Literal["pending_verification", "token_issued"]
-    token_hash: str
+    verification_code_hash: str
     requested_at: datetime
     verification_expires_at: datetime
     issued_at: datetime | None = None
     invite_id: str | None = None
 
 
+class VerificationCodeSubmit(BaseModel):
+    """Validated verification-code form payload."""
+
+    model_config = STRICT_MODEL_CONFIG
+
+    code: str
+
+    @field_validator("code")
+    @classmethod
+    def validate_code(cls, value: str) -> str:
+        cleaned = normalize_verification_code(value)
+        if len(cleaned) != 12:
+            raise ValueError("verification code must be 12 characters")
+        return cleaned
+
+
 class InviteIssueResponse(BaseModel):
     """Subset of the `data_hub` admin invite response consumed by the portal."""
 
-    model_config = STRICT_MODEL_CONFIG
+    model_config = ConfigDict(extra="ignore")
 
     invite_id: str
     enrollment_token: str

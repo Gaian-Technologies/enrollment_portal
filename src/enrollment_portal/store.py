@@ -29,9 +29,15 @@ class RequestStore:
         async with self._lock:
             await asyncio.to_thread(self._delete_request_sync, request_id)
 
-    async def get_request_by_token_hash(self, token_hash: str) -> AccessRequestRecord | None:
+    async def get_request_by_verification_code_hash(
+        self,
+        verification_code_hash: str,
+    ) -> AccessRequestRecord | None:
         async with self._lock:
-            row = await asyncio.to_thread(self._fetch_request_by_token_hash_sync, token_hash)
+            row = await asyncio.to_thread(
+                self._fetch_request_by_verification_code_hash_sync,
+                verification_code_hash,
+            )
         if row is None:
             return None
         return AccessRequestRecord.model_validate(row)
@@ -69,6 +75,17 @@ class RequestStore:
     def _initialize(self) -> None:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self._db_path) as connection:
+            columns = {
+                row[1]
+                for row in connection.execute("PRAGMA table_info(access_requests)")
+            }
+            if "token_hash" in columns and "verification_code_hash" not in columns:
+                connection.execute(
+                    """
+                    ALTER TABLE access_requests
+                    RENAME COLUMN token_hash TO verification_code_hash
+                    """
+                )
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS access_requests (
@@ -77,7 +94,7 @@ class RequestStore:
                     name TEXT NOT NULL,
                     client_ip TEXT NOT NULL,
                     status TEXT NOT NULL,
-                    token_hash TEXT NOT NULL UNIQUE,
+                    verification_code_hash TEXT NOT NULL UNIQUE,
                     requested_at TEXT NOT NULL,
                     verification_expires_at TEXT NOT NULL,
                     issued_at TEXT,
@@ -111,7 +128,7 @@ class RequestStore:
                     name,
                     client_ip,
                     status,
-                    token_hash,
+                    verification_code_hash,
                     requested_at,
                     verification_expires_at,
                     issued_at,
@@ -124,7 +141,7 @@ class RequestStore:
                     record.name,
                     record.client_ip,
                     record.status,
-                    record.token_hash,
+                    record.verification_code_hash,
                     record.requested_at.isoformat(),
                     record.verification_expires_at.isoformat(),
                     record.issued_at.isoformat() if record.issued_at else None,
@@ -141,16 +158,16 @@ class RequestStore:
             )
             connection.commit()
 
-    def _fetch_request_by_token_hash_sync(self, token_hash: str) -> dict | None:
+    def _fetch_request_by_verification_code_hash_sync(self, verification_code_hash: str) -> dict | None:
         with self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT request_id, email, name, client_ip, status, token_hash,
+                SELECT request_id, email, name, client_ip, status, verification_code_hash,
                        requested_at, verification_expires_at, issued_at, invite_id
                 FROM access_requests
-                WHERE token_hash = ?
+                WHERE verification_code_hash = ?
                 """,
-                (token_hash,),
+                (verification_code_hash,),
             ).fetchone()
         return dict(row) if row is not None else None
 

@@ -9,8 +9,8 @@ The supported workflow is:
 
 1. user opens the portal page
 2. user enters an email address and optional name
-3. portal sends a verification email through Amazon SES
-4. user opens the verification link
+3. portal sends a verification code through Amazon SES
+4. user enters that code in the portal
 5. portal calls the private `data_hub` admin invite API
 6. portal shows a single-use short-lived `enrollment_token`
 
@@ -112,7 +112,7 @@ The service stores:
 
 It does not store:
 
-- the raw verification token
+- the raw verification code
 - the raw `enrollment_token`
 - any user password
 

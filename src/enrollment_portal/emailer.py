@@ -1,4 +1,4 @@
-"""Amazon SES email delivery for verification links."""
+"""Amazon SES email delivery for verification codes."""
 
 from __future__ import annotations
 
@@ -23,14 +23,23 @@ class EmailSender:
         self._settings = settings
         self._client = boto3.client("sesv2", region_name=settings.aws_region)
 
-    def send_verification_email(self, *, email: str, name: str, verification_url: str) -> None:
+    def send_verification_email(
+        self,
+        *,
+        email: str,
+        name: str,
+        verification_code: str,
+        verification_page_url: str,
+    ) -> None:
         recipient_name = name or "there"
-        subject = f"{self._settings.site_name}: verify your email"
+        subject = f"{self._settings.site_name}: your verification code"
         body = (
             f"Hi {recipient_name},\n\n"
-            f"Open the link below to receive your Home Assistant enrollment token:\n\n"
-            f"{verification_url}\n\n"
-            f"This link expires in {self._settings.verification_ttl_minutes} minutes.\n"
+            f"Enter this verification code in the portal to receive your Home Assistant enrollment token:\n\n"
+            f"{verification_code}\n\n"
+            f"Verification page:\n"
+            f"{verification_page_url}\n\n"
+            f"This code expires in {self._settings.verification_ttl_minutes} minutes.\n"
         )
 
         request: dict[str, object] = {
