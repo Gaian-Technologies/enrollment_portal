@@ -77,6 +77,46 @@ The example environment file uses Cloudflare's official Turnstile test keys so
 the request form can be validated locally. Replace them with a real Turnstile
 widget before public rollout.
 
+## Turnstile Setup
+
+Create one Cloudflare Turnstile widget for the public Hub hostname.
+
+The validated public setup uses:
+
+- widget mode: `managed`
+- hostname: `hub.gaiantechnologies.com`
+
+Then copy the real widget keys into:
+
+- `ENROLLMENT_PORTAL_TURNSTILE_SITE_KEY`
+- `ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY`
+
+in [`.env`](/ssd2/Gaian/Workspace/enrollment_portal/.env) and restart the
+service:
+
+```bash
+docker compose up -d --build
+```
+
+The exact setup sequence is:
+
+1. create the Turnstile widget in Cloudflare
+2. set the hostname to `hub.gaiantechnologies.com`
+3. keep the widget mode as `managed`
+4. copy the real site key and secret key into `.env`
+5. rebuild the portal container
+6. test the public flow at `https://hub.gaiantechnologies.com/request-access`
+
+The validated browser flow is:
+
+1. open `https://hub.gaiantechnologies.com/request-access`
+2. complete the Turnstile challenge
+3. submit name and email
+4. receive the email verification code
+5. open `https://hub.gaiantechnologies.com/verify`
+6. paste the code
+7. copy the issued `enrollment_token`
+
 For local Docker testing before EC2, also set:
 
 - `AWS_PROFILE=deployment`
@@ -90,8 +130,9 @@ and make sure that named profile exists in `~/.aws/credentials` and
 
 The supported deployment shape is one public Hub domain with Nginx routing:
 
-- `/request-access` -> `enrollment_portal`
-- `/verify` -> `enrollment_portal`
+- `GET/POST /request-access` -> `enrollment_portal`
+- `GET/POST /verify` -> `enrollment_portal`
+- `GET /static/*` -> `enrollment_portal`
 - `/api/v1/enrollment` -> `data_hub`
 
 This service should not be exposed directly on a public high port.
@@ -105,6 +146,16 @@ Before public launch, add:
 The SES infrastructure is scaffolded in:
 
 - [`/ssd2/Gaian/Workspace/infra/aws_cdk`](/ssd2/Gaian/Workspace/infra/aws_cdk)
+
+The public Hub Nginx vhost must allow:
+
+- `GET/POST /request-access`
+- `GET/POST /verify`
+- `GET /static/*`
+
+The matching Nginx template lives at:
+
+- [`/ssd2/Gaian/Workspace/data_hub/config/nginx/hub.public.conf.example`](/ssd2/Gaian/Workspace/data_hub/config/nginx/hub.public.conf.example)
 
 ## Data Retention
 
