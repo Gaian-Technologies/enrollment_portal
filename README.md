@@ -143,6 +143,12 @@ Before public launch, add:
 
 - reverse-proxy rate limiting in Nginx
 
+The supported public posture is:
+
+- Nginx edge rate limits on `/request-access` and `/verify`
+- application-level limits in `enrollment_portal` per IP and per email
+- Turnstile on request submission
+
 The SES infrastructure is scaffolded in:
 
 - [`/ssd2/Gaian/Workspace/infra/aws_cdk`](/ssd2/Gaian/Workspace/infra/aws_cdk)
