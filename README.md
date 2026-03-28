@@ -33,8 +33,9 @@ The supported delivery path is Amazon SES using the standard AWS credential
 chain.
 
 On EC2, the portal should use the instance role.
-For local Docker testing, provide standard AWS credentials to the container
-only if you need to send test emails before moving to EC2.
+For local Docker testing, the supported path is a read-only mount of the
+operator's `~/.aws` directory with `AWS_PROFILE` set to a deployment-capable
+named profile such as `deployment`.
 
 The verification flow does not work until all of these are true:
 
@@ -64,6 +65,13 @@ http://127.0.0.1:8100/request-access
 
 Before testing email delivery, replace the placeholder SES values in `.env`
 with the real SES region and verified sender address.
+
+For local Docker testing before EC2, also set:
+
+- `AWS_PROFILE=deployment`
+
+and make sure that named profile exists in `~/.aws/credentials` and
+`~/.aws/config` on the host running Docker Compose.
 
 ## Deployment Shape
 
