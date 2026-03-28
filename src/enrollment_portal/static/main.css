@@ -94,6 +94,11 @@ button:hover {
   border: 1px solid #efc0b6;
 }
 
+.turnstile-shell {
+  display: flex;
+  justify-content: center;
+}
+
 .token {
   overflow-x: auto;
   margin: 1rem 0 0;

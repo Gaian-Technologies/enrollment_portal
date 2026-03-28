@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ page_title }} - {{ site_name }}</title>
     <link rel="stylesheet" href="/static/main.css">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   </head>
   <body>
     <main class="shell">
@@ -23,6 +24,9 @@
             <span>Name</span>
             <input type="text" name="name" value="{{ form_values.name }}" autocomplete="name">
           </label>
+          <div class="turnstile-shell">
+            <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>
+          </div>
           <button type="submit">Send verification code</button>
         </form>
         <p><a href="/verify">Already have a code?</a></p>

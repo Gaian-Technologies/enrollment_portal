@@ -41,6 +41,8 @@ class Settings:
     aws_region: str
     ses_from_email: str
     ses_configuration_set: str
+    turnstile_site_key: str
+    turnstile_secret_key: str
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -59,6 +61,8 @@ class Settings:
             aws_region=_get_aws_region(),
             ses_from_email=_get_required("ENROLLMENT_PORTAL_SES_FROM_EMAIL"),
             ses_configuration_set=os.getenv("ENROLLMENT_PORTAL_SES_CONFIGURATION_SET", "").strip(),
+            turnstile_site_key=_get_required("ENROLLMENT_PORTAL_TURNSTILE_SITE_KEY"),
+            turnstile_secret_key=_get_required("ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY"),
         )
 
     def verification_page_url(self) -> str:

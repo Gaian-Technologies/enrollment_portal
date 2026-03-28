@@ -16,6 +16,7 @@ from .emailer import EmailDeliveryError
 from .hub_client import HubAdminError
 from .models import AccessRequestCreate, HealthResponse, VerificationCodeSubmit
 from .runtime import PortalRuntime, RateLimitError, VerificationError
+from .turnstile import HumanVerificationFailed, HumanVerificationUnavailable
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(PACKAGE_ROOT / "templates"))
@@ -74,6 +75,7 @@ def create_app(settings: Settings) -> FastAPI:
             "request_access.html",
             page_title="Request access",
             site_name=settings.site_name,
+            turnstile_site_key=settings.turnstile_site_key,
             form_values={"email": "", "name": ""},
             form_error=None,
         )
@@ -83,21 +85,45 @@ def create_app(settings: Settings) -> FastAPI:
         request: Request,
         email: str = Form(...),
         name: str = Form(default=""),
+        turnstile_response: str = Form(default="", alias="cf-turnstile-response"),
     ) -> HTMLResponse:
         form_values = {"email": email, "name": name}
 
         try:
             payload = AccessRequestCreate(email=email, name=name)
-            await runtime.submit_request(payload, _client_ip(request))
+            await runtime.submit_request(payload, _client_ip(request), turnstile_response)
         except RateLimitError:
             return _render_template(
                 request,
                 "request_access.html",
                 page_title="Request access",
                 site_name=settings.site_name,
+                turnstile_site_key=settings.turnstile_site_key,
                 form_values=form_values,
                 form_error="Too many requests. Wait and try again later.",
                 status_code=429,
+            )
+        except HumanVerificationFailed:
+            return _render_template(
+                request,
+                "request_access.html",
+                page_title="Request access",
+                site_name=settings.site_name,
+                turnstile_site_key=settings.turnstile_site_key,
+                form_values=form_values,
+                form_error="Complete the human verification and try again.",
+                status_code=400,
+            )
+        except HumanVerificationUnavailable:
+            return _render_template(
+                request,
+                "request_access.html",
+                page_title="Request access",
+                site_name=settings.site_name,
+                turnstile_site_key=settings.turnstile_site_key,
+                form_values=form_values,
+                form_error="Human verification is temporarily unavailable. Try again shortly.",
+                status_code=502,
             )
         except EmailDeliveryError:
             return _render_template(
@@ -105,6 +131,7 @@ def create_app(settings: Settings) -> FastAPI:
                 "request_access.html",
                 page_title="Request access",
                 site_name=settings.site_name,
+                turnstile_site_key=settings.turnstile_site_key,
                 form_values=form_values,
                 form_error="Could not deliver the verification email. The portal SES configuration or AWS access is unavailable.",
                 status_code=502,
@@ -115,6 +142,7 @@ def create_app(settings: Settings) -> FastAPI:
                 "request_access.html",
                 page_title="Request access",
                 site_name=settings.site_name,
+                turnstile_site_key=settings.turnstile_site_key,
                 form_values=form_values,
                 form_error="Enter a valid email address and a short name if provided.",
                 status_code=400,

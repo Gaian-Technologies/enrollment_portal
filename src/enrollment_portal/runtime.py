@@ -17,6 +17,7 @@ from .models import (
     normalize_verification_code,
 )
 from .store import RequestStore
+from .turnstile import HumanVerificationFailed, HumanVerificationUnavailable, TurnstileVerifier
 
 
 class RateLimitError(Exception):
@@ -52,12 +53,14 @@ class PortalRuntime:
         self.settings = settings
         self.store = RequestStore(settings)
         self.emailer = EmailSender(settings)
+        self.turnstile = TurnstileVerifier(settings)
 
     async def start(self) -> None:
         await self.store.start()
 
-    async def submit_request(self, payload: AccessRequestCreate, client_ip: str) -> None:
+    async def submit_request(self, payload: AccessRequestCreate, client_ip: str, turnstile_token: str) -> None:
         await self._enforce_rate_limits(payload.email, client_ip)
+        await self.turnstile.verify(token=turnstile_token, client_ip=client_ip)
 
         verification_code = generate_verification_code()
         requested_at = utcnow()

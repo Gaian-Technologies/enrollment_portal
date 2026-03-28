@@ -28,6 +28,8 @@ The required values are:
 - `ENROLLMENT_PORTAL_HUB_ADMIN_TOKEN`
 - `AWS_REGION`
 - `ENROLLMENT_PORTAL_SES_FROM_EMAIL`
+- `ENROLLMENT_PORTAL_TURNSTILE_SITE_KEY`
+- `ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY`
 
 The supported delivery path is Amazon SES using the standard AWS credential
 chain.
@@ -47,6 +49,7 @@ The verification flow does not work until all of these are true:
 - the AWS region matches the SES identity region
 - the portal has AWS permission to send mail
 - `ENROLLMENT_PORTAL_SES_FROM_EMAIL` uses a verified SES identity
+- Turnstile site and secret keys are configured
 
 ## Start
 
@@ -69,6 +72,10 @@ http://127.0.0.1:8100/request-access
 
 Before testing email delivery, replace the placeholder SES values in `.env`
 with the real SES region and verified sender address.
+
+The example environment file uses Cloudflare's official Turnstile test keys so
+the request form can be validated locally. Replace them with a real Turnstile
+widget before public rollout.
 
 For local Docker testing before EC2, also set:
 
@@ -93,7 +100,6 @@ same host Nginx instance that already fronts `data_hub`.
 
 Before public launch, add:
 
-- CAPTCHA or Turnstile on the request form
 - reverse-proxy rate limiting in Nginx
 
 The SES infrastructure is scaffolded in:
