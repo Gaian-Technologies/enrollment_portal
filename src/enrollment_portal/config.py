@@ -18,11 +18,12 @@ def _get_int(name: str, default: int) -> int:
     return int(os.getenv(name, str(default)))
 
 
-def _get_bool(name: str, default: bool) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+def _get_aws_region() -> str:
+    for name in ("AWS_REGION", "AWS_DEFAULT_REGION"):
+        value = os.getenv(name)
+        if value is not None and value.strip():
+            return value.strip()
+    raise ValueError("Missing required environment variable: AWS_REGION")
 
 
 @dataclass(slots=True, frozen=True)
@@ -40,12 +41,9 @@ class Settings:
     invite_expires_hours: int
     rate_limit_per_ip_per_hour: int
     rate_limit_per_email_per_hour: int
-    smtp_host: str
-    smtp_port: int
-    smtp_username: str
-    smtp_password: str
-    smtp_from_email: str
-    smtp_starttls: bool
+    aws_region: str
+    ses_from_email: str
+    ses_configuration_set: str
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -61,12 +59,9 @@ class Settings:
             invite_expires_hours=_get_int("ENROLLMENT_PORTAL_INVITE_EXPIRES_HOURS", 1),
             rate_limit_per_ip_per_hour=_get_int("ENROLLMENT_PORTAL_RATE_LIMIT_PER_IP_PER_HOUR", 10),
             rate_limit_per_email_per_hour=_get_int("ENROLLMENT_PORTAL_RATE_LIMIT_PER_EMAIL_PER_HOUR", 3),
-            smtp_host=_get_required("ENROLLMENT_PORTAL_SMTP_HOST"),
-            smtp_port=_get_int("ENROLLMENT_PORTAL_SMTP_PORT", 587),
-            smtp_username=os.getenv("ENROLLMENT_PORTAL_SMTP_USERNAME", "").strip(),
-            smtp_password=os.getenv("ENROLLMENT_PORTAL_SMTP_PASSWORD", ""),
-            smtp_from_email=_get_required("ENROLLMENT_PORTAL_SMTP_FROM_EMAIL"),
-            smtp_starttls=_get_bool("ENROLLMENT_PORTAL_SMTP_STARTTLS", True),
+            aws_region=_get_aws_region(),
+            ses_from_email=_get_required("ENROLLMENT_PORTAL_SES_FROM_EMAIL"),
+            ses_configuration_set=os.getenv("ENROLLMENT_PORTAL_SES_CONFIGURATION_SET", "").strip(),
         )
 
     def verification_url(self, token: str) -> str:

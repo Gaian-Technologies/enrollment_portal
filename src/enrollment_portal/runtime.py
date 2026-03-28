@@ -1,4 +1,4 @@
-"""Runtime orchestration for request intake, verification, and invite issuance."""
+"""Runtime orchestration for request intake, verification, SES delivery, and invite issuance."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def hash_token(token: str) -> str:
 
 
 class PortalRuntime:
-    """Coordinate request storage, SMTP delivery, and Hub invite issuance."""
+    """Coordinate request storage, SES delivery, and Hub invite issuance."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings

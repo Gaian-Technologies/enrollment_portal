@@ -9,7 +9,7 @@ The supported workflow is:
 
 1. user opens the portal page
 2. user enters an email address and optional name
-3. portal sends a verification email
+3. portal sends a verification email through Amazon SES
 4. user opens the verification link
 5. portal calls the private `data_hub` admin invite API
 6. portal shows a single-use short-lived `enrollment_token`
@@ -26,14 +26,22 @@ The required values are:
 - `ENROLLMENT_PORTAL_PUBLIC_BASE_URL`
 - `ENROLLMENT_PORTAL_HUB_ADMIN_API_URL`
 - `ENROLLMENT_PORTAL_HUB_ADMIN_TOKEN`
-- `ENROLLMENT_PORTAL_SMTP_HOST`
-- `ENROLLMENT_PORTAL_SMTP_PORT`
-- `ENROLLMENT_PORTAL_SMTP_FROM_EMAIL`
+- `AWS_REGION`
+- `ENROLLMENT_PORTAL_SES_FROM_EMAIL`
 
-The verification flow does not work until the portal can reach a real SMTP
-relay with valid settings. If SMTP is still pointed at placeholder values, the
-request form will submit and then return `502 Bad Gateway` when email delivery
-fails.
+The supported delivery path is Amazon SES using the standard AWS credential
+chain.
+
+On EC2, the portal should use the instance role.
+For local Docker testing, provide standard AWS credentials to the container
+only if you need to send test emails before moving to EC2.
+
+The verification flow does not work until all of these are true:
+
+- the SES identity is verified
+- the AWS region matches the SES identity region
+- the portal has AWS permission to send mail
+- `ENROLLMENT_PORTAL_SES_FROM_EMAIL` uses a verified SES identity
 
 ## Start
 
@@ -54,9 +62,8 @@ Open the request page:
 http://127.0.0.1:8100/request-access
 ```
 
-Before testing email delivery, replace the placeholder SMTP values in `.env`
-with a reachable mail relay and valid credentials if the relay requires
-authentication.
+Before testing email delivery, replace the placeholder SES values in `.env`
+with the real SES region and verified sender address.
 
 ## Deployment Shape
 
@@ -74,6 +81,10 @@ Before public launch, add:
 
 - CAPTCHA or Turnstile on the request form
 - reverse-proxy rate limiting in Nginx
+
+The SES infrastructure is scaffolded in:
+
+- [`/ssd2/Gaian/Workspace/infra/aws_cdk`](/ssd2/Gaian/Workspace/infra/aws_cdk)
 
 ## Data Retention
 

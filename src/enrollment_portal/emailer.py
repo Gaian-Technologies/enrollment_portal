@@ -1,10 +1,11 @@
-"""SMTP email delivery for verification links."""
+"""Amazon SES email delivery for verification links."""
 
 from __future__ import annotations
 
-from email.message import EmailMessage
 import logging
-import smtplib
+
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 from .config import Settings
 
@@ -16,10 +17,11 @@ class EmailDeliveryError(Exception):
 
 
 class EmailSender:
-    """Send verification emails through the configured SMTP relay."""
+    """Send verification emails through Amazon SES using the AWS credential chain."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        self._client = boto3.client("sesv2", region_name=settings.aws_region)
 
     def send_verification_email(self, *, email: str, name: str, verification_url: str) -> None:
         recipient_name = name or "there"
@@ -31,27 +33,34 @@ class EmailSender:
             f"This link expires in {self._settings.verification_ttl_minutes} minutes.\n"
         )
 
-        message = EmailMessage()
-        message["Subject"] = subject
-        message["From"] = self._settings.smtp_from_email
-        message["To"] = email
-        message.set_content(body)
+        request: dict[str, object] = {
+            "FromEmailAddress": self._settings.ses_from_email,
+            "Destination": {
+                "ToAddresses": [email],
+            },
+            "Content": {
+                "Simple": {
+                    "Subject": {
+                        "Data": subject,
+                    },
+                    "Body": {
+                        "Text": {
+                            "Data": body,
+                        }
+                    },
+                }
+            },
+        }
+        if self._settings.ses_configuration_set:
+            request["ConfigurationSetName"] = self._settings.ses_configuration_set
 
         try:
-            with smtplib.SMTP(self._settings.smtp_host, self._settings.smtp_port, timeout=30) as smtp:
-                smtp.ehlo()
-                if self._settings.smtp_starttls:
-                    smtp.starttls()
-                    smtp.ehlo()
-                if self._settings.smtp_username:
-                    smtp.login(self._settings.smtp_username, self._settings.smtp_password)
-                smtp.send_message(message)
-        except Exception as err:
+            self._client.send_email(**request)
+        except (BotoCoreError, ClientError) as err:
             LOGGER.exception(
-                "Failed to deliver verification email via SMTP host=%s port=%s starttls=%s auth_configured=%s",
-                self._settings.smtp_host,
-                self._settings.smtp_port,
-                self._settings.smtp_starttls,
-                bool(self._settings.smtp_username),
+                "Failed to deliver verification email via SES region=%s from_email=%s configuration_set=%s",
+                self._settings.aws_region,
+                self._settings.ses_from_email,
+                self._settings.ses_configuration_set or "<none>",
             )
             raise EmailDeliveryError("failed_to_deliver_email") from err
