@@ -393,6 +393,7 @@ def create_app(settings: Settings) -> FastAPI:
             "token_issued.html",
             page_title="Enrollment token issued",
             site_name=settings.site_name,
+            hub_url=settings.public_base_url,
             enrollment_token=invite.enrollment_token,
             invite_lifetime=_format_invite_lifetime(settings.invite_expires_hours),
         )

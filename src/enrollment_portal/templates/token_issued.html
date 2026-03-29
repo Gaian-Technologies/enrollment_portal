@@ -10,7 +10,10 @@
     <main class="shell">
       <section class="card">
         <h1>Enrollment token issued</h1>
-        <p class="lede">Copy this token into the Home Assistant `ha_telemetry` setup flow.</p>
+        <p class="lede">Use this Hub URL and enrollment token in the Home Assistant `ha_telemetry` setup flow.</p>
+        <p><strong>Hub URL</strong></p>
+        <pre class="token">{{ hub_url }}</pre>
+        <p><strong>Enrollment token</strong></p>
         <pre class="token">{{ enrollment_token }}</pre>
         <p>This token expires in {{ invite_lifetime }}.</p>
       </section>
