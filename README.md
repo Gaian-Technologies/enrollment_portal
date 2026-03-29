@@ -40,6 +40,8 @@ The portal binds to `127.0.0.1:8100`, stays local-only, and reaches the
 private Hub admin API on `127.0.0.1:8000`.
 
 On EC2, the portal should use the instance role.
+If `AWS_PROFILE` is blank, the portal ignores it and falls back to the normal
+AWS instance credential chain.
 For local Docker testing, the supported path is a read-only mount of the
 operator's `~/.aws` directory with `AWS_PROFILE` set to a deployment-capable
 named profile such as `deployment`.

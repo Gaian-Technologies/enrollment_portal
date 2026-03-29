@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -21,6 +22,10 @@ class EmailSender:
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        # Docker Compose may inject AWS_PROFILE as an empty string on EC2 when the
+        # supported deployment intentionally uses the instance role instead.
+        if not os.getenv("AWS_PROFILE", "").strip():
+            os.environ.pop("AWS_PROFILE", None)
         self._client = boto3.client("sesv2", region_name=settings.aws_region)
 
     def send_verification_email(

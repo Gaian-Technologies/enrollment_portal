@@ -10,4 +10,4 @@ services:
       AWS_PROFILE: ${AWS_PROFILE:-}
     volumes:
       - ./var:/app/var
-      - ${HOME}/.aws:/root/.aws:ro
+      - ${HOME:-/root}/.aws:/root/.aws:ro
