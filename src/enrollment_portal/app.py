@@ -141,7 +141,7 @@ def create_app(settings: Settings) -> FastAPI:
         return _render_template(
             request,
             "request_access.html",
-            page_title="Request access",
+            page_title="Enrollment",
             site_name=settings.site_name,
             turnstile_site_key=settings.turnstile_site_key,
             metadata_fields=settings.site_metadata_fields,
@@ -203,7 +203,7 @@ def create_app(settings: Settings) -> FastAPI:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Request access",
+                page_title="Enrollment",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
@@ -220,7 +220,7 @@ def create_app(settings: Settings) -> FastAPI:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Request access",
+                page_title="Enrollment",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
@@ -237,7 +237,7 @@ def create_app(settings: Settings) -> FastAPI:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Request access",
+                page_title="Enrollment",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
@@ -254,7 +254,7 @@ def create_app(settings: Settings) -> FastAPI:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Request access",
+                page_title="Enrollment",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
@@ -271,7 +271,7 @@ def create_app(settings: Settings) -> FastAPI:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Request access",
+                page_title="Enrollment",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
@@ -288,7 +288,7 @@ def create_app(settings: Settings) -> FastAPI:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Request access",
+                page_title="Enrollment",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
@@ -305,7 +305,7 @@ def create_app(settings: Settings) -> FastAPI:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Request access",
+                page_title="Enrollment",
                 site_name=settings.site_name,
                 turnstile_site_key=settings.turnstile_site_key,
                 metadata_fields=settings.site_metadata_fields,
