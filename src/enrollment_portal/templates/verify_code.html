@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ page_title }} - {{ site_name }}</title>
-    <link rel="stylesheet" href="/static/main.css">
+    <link rel="stylesheet" href="/enroll/static/main.css">
   </head>
   <body>
     <main class="shell">
@@ -17,7 +17,7 @@
         {% if form_error %}
         <div class="notice error">{{ form_error }}</div>
         {% endif %}
-        <form method="post" action="/verify" class="stack">
+        <form method="post" action="/enroll/verify" class="stack">
           <label>
             <span>Verification code</span>
             <input type="text" name="code" value="{{ form_values.code }}" required autocomplete="one-time-code" autocapitalize="characters" spellcheck="false">

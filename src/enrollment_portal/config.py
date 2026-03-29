@@ -76,4 +76,4 @@ class Settings:
     def verification_page_url(self) -> str:
         """Return the public page where users enter the emailed verification code."""
 
-        return f"{self.public_base_url}/verify"
+        return f"{self.public_base_url}/enroll/verify"

@@ -124,7 +124,9 @@ def create_app(settings: Settings) -> FastAPI:
     app = FastAPI(title="Enrollment Portal", lifespan=lifespan)
     app.state.runtime = runtime
     app.state.settings = settings
-    app.mount("/static", StaticFiles(directory=str(PACKAGE_ROOT / "static")), name="static")
+    app.mount("/enroll/static", StaticFiles(directory=str(PACKAGE_ROOT / "static")), name="portal-static")
+    # Keep the legacy static path during the public route migration.
+    app.mount("/static", StaticFiles(directory=str(PACKAGE_ROOT / "static")), name="legacy-static")
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
@@ -132,9 +134,9 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/", response_class=RedirectResponse)
     async def root() -> RedirectResponse:
-        return RedirectResponse(url="/request-access", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url="/enroll", status_code=status.HTTP_302_FOUND)
 
-    @app.get("/request-access", response_class=HTMLResponse)
+    @app.get("/enroll", response_class=HTMLResponse)
     async def request_access_page(request: Request) -> HTMLResponse:
         return _render_template(
             request,
@@ -157,7 +159,7 @@ def create_app(settings: Settings) -> FastAPI:
             form_error=None,
         )
 
-    @app.post("/request-access", response_class=HTMLResponse)
+    @app.post("/enroll", response_class=HTMLResponse)
     async def request_access_submit(request: Request) -> HTMLResponse:
         form = await request.form()
         email = str(form.get("email", "") or "")
@@ -329,7 +331,7 @@ def create_app(settings: Settings) -> FastAPI:
             form_error=None,
         )
 
-    @app.get("/verify", response_class=HTMLResponse)
+    @app.get("/enroll/verify", response_class=HTMLResponse)
     async def verify_code_page(request: Request) -> HTMLResponse:
         return _render_template(
             request,
@@ -343,7 +345,7 @@ def create_app(settings: Settings) -> FastAPI:
             form_error=None,
         )
 
-    @app.post("/verify", response_class=HTMLResponse)
+    @app.post("/enroll/verify", response_class=HTMLResponse)
     async def verify_request(request: Request, code: str = Form(...)) -> HTMLResponse:
         form_values = {"code": code}
         try:
@@ -394,5 +396,21 @@ def create_app(settings: Settings) -> FastAPI:
             enrollment_token=invite.enrollment_token,
             invite_lifetime=_format_invite_lifetime(settings.invite_expires_hours),
         )
+
+    @app.get("/request-access", response_class=RedirectResponse)
+    async def legacy_request_access() -> RedirectResponse:
+        return RedirectResponse(url="/enroll", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+
+    @app.post("/request-access", response_class=HTMLResponse)
+    async def legacy_request_access_submit(request: Request) -> HTMLResponse:
+        return await request_access_submit(request)
+
+    @app.get("/verify", response_class=RedirectResponse)
+    async def legacy_verify() -> RedirectResponse:
+        return RedirectResponse(url="/enroll/verify", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+
+    @app.post("/verify", response_class=HTMLResponse)
+    async def legacy_verify_submit(request: Request, code: str = Form(...)) -> HTMLResponse:
+        return await verify_request(request, code)
 
     return app

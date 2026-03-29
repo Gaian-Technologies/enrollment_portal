@@ -68,7 +68,7 @@ curl -sS http://127.0.0.1:8100/health
 Open the request page:
 
 ```text
-http://127.0.0.1:8100/request-access
+http://127.0.0.1:8100/enroll
 ```
 
 Before testing email delivery, replace the placeholder SES values in `.env`
@@ -80,12 +80,12 @@ widget before public rollout.
 
 ## Turnstile Setup
 
-Create one Cloudflare Turnstile widget for the public Hub hostname.
+Create one Cloudflare Turnstile widget for the public site hostname.
 
 The validated public setup uses:
 
 - widget mode: `managed`
-- hostname: `hub.example.com`
+- hostname: `example.com`
 
 Then copy the real widget keys into:
 
@@ -102,11 +102,11 @@ docker compose up -d --build
 The exact setup sequence is:
 
 1. create the Turnstile widget in Cloudflare
-2. set the hostname to `hub.example.com`
+2. set the hostname to `example.com`
 3. keep the widget mode as `managed`
 4. copy the real site key and secret key into `.env`
 5. rebuild the portal container
-6. test the public flow at `https://hub.example.com/request-access`
+6. test the public flow at `https://example.com/enroll`
 
 Site metadata fields are configured through:
 
@@ -152,13 +152,13 @@ The initial built-in electricity identifier registry supports:
 
 The validated browser flow is:
 
-1. open `https://hub.example.com/request-access`
+1. open `https://example.com/enroll`
 2. complete the Turnstile challenge
 3. submit email and any optional site details
 4. if the selected country supports it, optionally enter the standardized
    electricity site reference shown for that country
 5. receive the email verification code
-6. open `https://hub.example.com/verify`
+6. open `https://example.com/enroll/verify`
 7. paste the code
 8. copy the issued `enrollment_token`
 
@@ -173,24 +173,25 @@ and make sure that named profile exists in `~/.aws/credentials` and
 
 ## Deployment Shape
 
-The supported deployment shape is one public Hub domain with Nginx routing:
+The supported deployment shape is one public apex domain with one host Nginx
+instance routing:
 
-- `GET/POST /request-access` -> `enrollment_portal`
-- `GET/POST /verify` -> `enrollment_portal`
-- `GET /static/*` -> `enrollment_portal`
-- `/api/v1/enrollment` -> `data_hub`
+- `GET /` -> static website landing page
+- `GET /quicksetup` -> static website quick setup page
+- `GET/POST /enroll` -> `enrollment_portal`
+- `GET/POST /enroll/verify` -> `enrollment_portal`
+- `GET /enroll/static/*` -> `enrollment_portal`
+- `POST /api/v1/enrollment` -> `data_hub`
 
 This service should not be exposed directly on a public high port.
 Run it on `127.0.0.1:8100` with host networking and publish it through the
 same host Nginx instance that already fronts `data_hub`.
 
-Before public launch, add:
-
-- reverse-proxy rate limiting in Nginx
+Keep reverse-proxy rate limiting in Nginx as part of the supported deployment.
 
 The supported public posture is:
 
-- Nginx edge rate limits on `/request-access` and `/verify`
+- Nginx edge rate limits on `/enroll` and `/enroll/verify`
 - application-level limits in `enrollment_portal` per IP and per email
 - Turnstile on request submission
 
@@ -198,11 +199,11 @@ The SES infrastructure is scaffolded in:
 
 - [`/ssd2/Gaian/Workspace/infra/aws_cdk`](/ssd2/Gaian/Workspace/infra/aws_cdk)
 
-The public Hub Nginx vhost must allow:
+The public site Nginx vhost must allow:
 
-- `GET/POST /request-access`
-- `GET/POST /verify`
-- `GET /static/*`
+- `GET/POST /enroll`
+- `GET/POST /enroll/verify`
+- `GET /enroll/static/*`
 
 The matching Nginx template lives at:
 
