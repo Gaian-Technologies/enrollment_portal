@@ -177,8 +177,10 @@ The validated browser flow is:
 1. open `https://example.com/enroll`
 2. complete the Turnstile challenge
 3. submit email and any optional site details
-4. if the selected country supports it, optionally enter the standardized
-   electricity site reference shown for that country
+4. if the selected country supports it, optionally enter the electricity
+   site reference shown for that country; the portal stores a normalized
+   version of what the user enters and does not hard-reject real-world bill
+   formatting variations
 5. receive the email verification code
 6. open `https://example.com/enroll/verify`
 7. paste the code

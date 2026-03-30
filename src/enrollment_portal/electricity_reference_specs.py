@@ -8,7 +8,7 @@ from typing import Callable
 
 
 class ElectricityReferenceValidationError(Exception):
-    """Raised when a submitted country-specific electricity identifier is invalid."""
+    """Raised when a submitted country-specific electricity identifier is unusable."""
 
 
 @dataclass(slots=True, frozen=True)
@@ -31,69 +31,67 @@ COMMON_HELP_PREFIX = (
 
 
 def _normalize_nz_icp(value: str) -> str:
-    cleaned = _strip_space_and_punctuation(value)
-    if not re.fullmatch(r"\d{10}[A-Z]{2}\d{3}", cleaned):
-        raise ElectricityReferenceValidationError("Enter a valid New Zealand ICP number.")
-    return cleaned
+    return _normalize_alphanumeric_reference(value, prefixes=("ICP",))
 
 
 def _normalize_au_nmi(value: str) -> str:
-    cleaned = _strip_space_and_punctuation(value)
-    if not re.fullmatch(r"[A-HJ-NP-Z0-9]{10,11}", cleaned):
-        raise ElectricityReferenceValidationError("Enter a valid Australian NMI number.")
-    return cleaned
+    return _normalize_alphanumeric_reference(value, prefixes=("NMI",))
 
 
 def _normalize_ie_mprn(value: str) -> str:
-    cleaned = _digits_only(value)
-    if not re.fullmatch(r"10\d{9}", cleaned):
-        raise ElectricityReferenceValidationError("Enter a valid Irish MPRN.")
-    return cleaned
+    return _normalize_digit_reference(value, prefixes=("MPRN",))
 
 
 def _normalize_gb_mpan(value: str) -> str:
-    cleaned = _digits_only(value)
+    cleaned = _normalize_digit_reference(value, prefixes=("MPAN",))
     if len(cleaned) == 21:
         cleaned = cleaned[-13:]
-    if not re.fullmatch(r"\d{13}", cleaned):
-        raise ElectricityReferenceValidationError("Enter a valid Great Britain MPAN.")
     return cleaned
 
 
 def _normalize_pt_cpe(value: str) -> str:
-    cleaned = _strip_space_and_punctuation(value)
-    if not re.fullmatch(r"PT[A-Z0-9]{18}", cleaned):
-        raise ElectricityReferenceValidationError("Enter a valid Portuguese CPE.")
-    return cleaned
+    return _normalize_alphanumeric_reference(value, prefixes=("CPE",))
 
 
 def _normalize_es_cups(value: str) -> str:
-    cleaned = _strip_space_and_punctuation(value)
-    if not re.fullmatch(r"ES[A-Z0-9]{18,20}", cleaned):
-        raise ElectricityReferenceValidationError("Enter a valid Spanish CUPS.")
-    return cleaned
+    return _normalize_alphanumeric_reference(value, prefixes=("CUPS",))
 
 
 def _normalize_it_pod(value: str) -> str:
-    cleaned = _strip_space_and_punctuation(value)
-    if not re.fullmatch(r"IT[A-Z0-9]{12,13}", cleaned):
-        raise ElectricityReferenceValidationError("Enter a valid Italian POD.")
-    return cleaned
+    return _normalize_alphanumeric_reference(value, prefixes=("POD",))
 
 
 def _normalize_be_ean(value: str) -> str:
-    cleaned = _digits_only(value)
-    if not re.fullmatch(r"54\d{16}", cleaned):
-        raise ElectricityReferenceValidationError("Enter a valid Belgian EAN code.")
+    return _normalize_digit_reference(value, prefixes=("EAN",))
+
+
+def _normalize_alphanumeric_reference(
+    value: str,
+    *,
+    prefixes: tuple[str, ...] = (),
+) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9]", "", value).upper()
+    for prefix in prefixes:
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix):]
+            break
+    if len(cleaned) < 4:
+        raise ElectricityReferenceValidationError("Enter the identifier shown on your electricity bill.")
+    if len(cleaned) > 64:
+        raise ElectricityReferenceValidationError("Keep the identifier under 64 characters.")
     return cleaned
 
 
-def _strip_space_and_punctuation(value: str) -> str:
-    return re.sub(r"[\s\-]", "", value).upper()
-
-
-def _digits_only(value: str) -> str:
-    return re.sub(r"\D", "", value)
+def _normalize_digit_reference(
+    value: str,
+    *,
+    prefixes: tuple[str, ...] = (),
+) -> str:
+    cleaned = _normalize_alphanumeric_reference(value, prefixes=prefixes)
+    digits = re.sub(r"\D", "", cleaned)
+    if len(digits) < 4:
+        raise ElectricityReferenceValidationError("Enter the identifier shown on your electricity bill.")
+    return digits
 
 
 _SPECS: dict[str, ElectricityReferenceSpec] = {
