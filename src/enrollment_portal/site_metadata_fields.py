@@ -30,6 +30,7 @@ class SiteMetadataField:
     enable_electricity_reference: bool = False
     options: tuple[str, ...] = ()
     multiple: bool = False
+    show_optional_hint: bool = True
 
 
 COUNTRY_NAMES: tuple[str, ...] = tuple(
@@ -80,6 +81,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
         description = str(item.get("description", "")).strip()
         enable_electricity_reference = bool(item.get("enable_electricity_reference", False))
         multiple = bool(item.get("multiple", False))
+        show_optional_hint = bool(item.get("show_optional_hint", True))
 
         if not FIELD_KEY_PATTERN.fullmatch(key):
             raise ValueError("Site metadata field keys must be lower_snake_case")
@@ -131,6 +133,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
                 enable_electricity_reference=enable_electricity_reference,
                 options=normalized_options,
                 multiple=multiple,
+                show_optional_hint=show_optional_hint,
             )
         )
         seen_keys.add(key)

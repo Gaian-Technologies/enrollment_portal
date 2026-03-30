@@ -50,7 +50,7 @@
           {% for field in metadata_fields %}
           {% if field.field_type == "select" and field.multiple %}
           <fieldset class="choice-group choice-group--secondary">
-            <legend>{{ field.label }}{% if not field.required %} (optional){% endif %}</legend>
+            <legend>{{ field.label }}{% if not field.required and field.show_optional_hint %} (optional){% endif %}</legend>
             {% for option in field.options %}
             <label class="choice-option choice-option--compact">
               <input type="checkbox" name="{{ field.key }}" value="{{ option }}" {% if option in form_values[field.key] %}checked{% endif %}>
@@ -65,7 +65,7 @@
           </fieldset>
           {% else %}
           <label>
-            <span>{{ field.label }}{% if not field.required %} (optional){% endif %}</span>
+            <span>{{ field.label }}{% if not field.required and field.show_optional_hint %} (optional){% endif %}</span>
             {% if field.field_type == "country" %}
             <input type="text" name="{{ field.key }}" value="{{ form_values[field.key] }}" list="country-options" autocomplete="country-name" data-country-field="true" {% if field.required %}required{% endif %}>
             {% elif field.field_type == "select" %}

@@ -131,7 +131,7 @@ The supported field types are:
 Example:
 
 ```dotenv
-ENROLLMENT_PORTAL_SITE_METADATA_FIELDS=[{"key":"country","label":"Country","type":"country","required":false},{"key":"study_group","label":"Study group","type":"text","required":false,"description":"Optional study grouping label."},{"key":"property_roles","label":"Property roles","type":"select","required":false,"multiple":true,"description":"Optional. Select all that apply.","options":["Homeowner","Tenant","Landlord/property owner who is renting out"]}]
+ENROLLMENT_PORTAL_SITE_METADATA_FIELDS=[{"key":"country","label":"Country","type":"country","required":false},{"key":"study_group","label":"Study group","type":"text","required":false,"description":"Optional study grouping label."},{"key":"property_roles","label":"Property role/s","type":"select","required":false,"multiple":true,"show_optional_hint":false,"description":"Select all that apply.","options":["Owner-occupier","Tenant","Landlord","Property manager","Other"]}]
 ```
 
 `country` uses a native searchable country picker backed by a canonical list,
@@ -140,6 +140,8 @@ rejects invalid values, and stores a canonical country name.
 `select` uses a validated dropdown and stores one of the configured option strings.
 With `"multiple": true`, the portal accepts multiple selections and stores the
 canonical selections as one ` | `-separated string.
+Set `"show_optional_hint": false` on any non-required field that should remain
+optional in validation without showing `(optional)` in the UI.
 Any configured `text` field may also include an optional `description` string.
 
 To add the optional country-specific electricity identifier field, enable it on
