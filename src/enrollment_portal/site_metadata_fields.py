@@ -29,6 +29,7 @@ class SiteMetadataField:
     description: str = ""
     enable_electricity_reference: bool = False
     options: tuple[str, ...] = ()
+    multiple: bool = False
 
 
 COUNTRY_NAMES: tuple[str, ...] = tuple(
@@ -78,6 +79,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
         placeholder = str(item.get("placeholder", "")).strip()
         description = str(item.get("description", "")).strip()
         enable_electricity_reference = bool(item.get("enable_electricity_reference", False))
+        multiple = bool(item.get("multiple", False))
 
         if not FIELD_KEY_PATTERN.fullmatch(key):
             raise ValueError("Site metadata field keys must be lower_snake_case")
@@ -100,6 +102,8 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
                 raise ValueError("Only one country field is supported")
         elif enable_electricity_reference:
             raise ValueError("enable_electricity_reference is only supported on country fields")
+        elif multiple and normalized_type != "select":
+            raise ValueError("multiple is only supported on select fields")
 
         normalized_options: tuple[str, ...] = ()
         if normalized_type == "select":
@@ -126,6 +130,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
                 description=description,
                 enable_electricity_reference=enable_electricity_reference,
                 options=normalized_options,
+                multiple=multiple,
             )
         )
         seen_keys.add(key)
@@ -141,20 +146,30 @@ def normalize_site_metadata(
 
     normalized: dict[str, str] = {}
     for field in fields:
+        if field.field_type == "country":
+            raw_value = str(raw_values.get(field.key, "") or "").strip()
+            if not raw_value:
+                if field.required:
+                    raise SiteMetadataValidationError(f"{field.label} is required.")
+                continue
+            normalized[field.key] = _normalize_country(raw_value)
+            continue
+
+        if field.field_type == "select":
+            raw_value = raw_values.get(field.key, [])
+            normalized_value = _normalize_select(field, raw_value)
+            if not normalized_value:
+                if field.required:
+                    raise SiteMetadataValidationError(f"{field.label} is required.")
+                continue
+            normalized[field.key] = normalized_value
+            continue
+
         raw_value = str(raw_values.get(field.key, "") or "").strip()
         if not raw_value:
             if field.required:
                 raise SiteMetadataValidationError(f"{field.label} is required.")
             continue
-
-        if field.field_type == "country":
-            normalized[field.key] = _normalize_country(raw_value)
-            continue
-
-        if field.field_type == "select":
-            normalized[field.key] = _normalize_select(field, raw_value)
-            continue
-
         if len(raw_value) > 256:
             raise SiteMetadataValidationError(f"{field.label} must be 256 characters or fewer.")
         normalized[field.key] = raw_value
@@ -179,8 +194,27 @@ def _normalize_country(value: str) -> str:
     return match.name
 
 
-def _normalize_select(field: SiteMetadataField, value: str) -> str:
+def _normalize_select(field: SiteMetadataField, value: Any) -> str:
+    if field.multiple:
+        if not isinstance(value, list):
+            candidates = [str(value).strip()] if str(value).strip() else []
+        else:
+            candidates = [str(item).strip() for item in value if str(item).strip()]
+        if not candidates:
+            return ""
+        invalid = [item for item in candidates if item not in field.options]
+        if invalid:
+            raise SiteMetadataValidationError(f"Select valid {field.label.lower()} options.")
+        unique_values: list[str] = []
+        for item in candidates:
+            if item not in unique_values:
+                unique_values.append(item)
+        return " | ".join(unique_values)
+
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        return ""
     for option in field.options:
-        if value == option:
+        if raw_value == option:
             return option
     raise SiteMetadataValidationError(f"Select a valid {field.label.lower()} option.")

@@ -72,8 +72,11 @@ def _format_invite_lifetime(hours: int) -> str:
     return f"{hours} {unit}"
 
 
-def _empty_metadata_form_values(settings: Settings) -> dict[str, str]:
-    return {field.key: "" for field in settings.site_metadata_fields}
+def _empty_metadata_form_values(settings: Settings) -> dict[str, object]:
+    return {
+        field.key: ([] if field.field_type == "select" and field.multiple else "")
+        for field in settings.site_metadata_fields
+    }
 
 
 def _request_access_lede(settings: Settings) -> str:
@@ -112,7 +115,7 @@ def _country_reference_specs_json() -> str:
     )
 
 
-def _current_reference_spec(settings: Settings, form_values: dict[str, str]) -> dict[str, str] | None:
+def _current_reference_spec(settings: Settings, form_values: dict[str, object]) -> dict[str, str] | None:
     if not _country_reference_enabled(settings):
         return None
 
@@ -120,7 +123,8 @@ def _current_reference_spec(settings: Settings, form_values: dict[str, str]) -> 
     if country_field is None:
         return None
 
-    spec = get_electricity_reference_spec(form_values.get(country_field.key, "").strip())
+    country_value = str(form_values.get(country_field.key, "") or "").strip()
+    spec = get_electricity_reference_spec(country_value)
     if spec is None:
         return None
 
@@ -133,7 +137,7 @@ def _current_reference_spec(settings: Settings, form_values: dict[str, str]) -> 
 
 def _request_access_context(
     settings: Settings,
-    form_values: dict[str, str],
+    form_values: dict[str, object],
     *,
     form_error: str | None,
 ) -> dict[str, object]:
@@ -205,7 +209,11 @@ def create_app(settings: Settings) -> FastAPI:
         turnstile_response = str(form.get("cf-turnstile-response", "") or "")
         site_reference_value = str(form.get("site_reference_value", "") or "")
         metadata_values = {
-            field.key: str(form.get(field.key, "") or "")
+            field.key: (
+                [str(item).strip() for item in form.getlist(field.key) if str(item).strip()]
+                if field.field_type == "select" and field.multiple
+                else str(form.get(field.key, "") or "")
+            )
             for field in settings.site_metadata_fields
         }
         form_values = {
