@@ -4,7 +4,14 @@
 addresses and can either issue a single-use `data_hub` `enrollment_token`
 or register interest for later follow-up.
 
-It is intentionally separate from `data_hub`.
+It is intentionally separate from `data_hub`. The Hub stays private on the
+host, while this portal handles the public email-verification flow.
+
+If you are discovering the stack from this repo first:
+
+- [`data_hub`](/ssd2/Gaian/Workspace/data_hub) is the server-side API, MQTT, and InfluxDB stack
+- [`ha_telemetry`](/ssd2/Gaian/Workspace/ha_telemetry) is the generic Home Assistant integration that uses the issued `enrollment_token`
+- [`telemetry_website`](/ssd2/Gaian/Workspace/telemetry_website) is the generic public landing page that can link into this portal
 
 The supported workflow is:
 
