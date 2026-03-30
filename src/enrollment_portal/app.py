@@ -33,6 +33,13 @@ from .turnstile import HumanVerificationFailed, HumanVerificationUnavailable
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(PACKAGE_ROOT / "templates"))
+STATIC_ASSET_VERSION = str(
+    max(
+        int(path.stat().st_mtime)
+        for path in (PACKAGE_ROOT / "static").rglob("*")
+        if path.is_file()
+    )
+)
 
 
 def _client_ip(request: Request) -> str:
@@ -54,6 +61,7 @@ def _render_template(
         name,
         {
             "request": request,
+            "static_asset_version": STATIC_ASSET_VERSION,
             **context,
         },
         status_code=status_code,
