@@ -60,6 +60,43 @@ label {
   font-weight: 600;
 }
 
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+}
+
+.choice-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.choice-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: start;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: #fff;
+}
+
+.choice-option input {
+  width: auto;
+  margin-top: 0.2rem;
+}
+
+.choice-option span {
+  display: grid;
+  gap: 0.25rem;
+}
+
 .field-help {
   font-size: 0.95rem;
   line-height: 1.35;
@@ -71,7 +108,8 @@ label {
   display: none;
 }
 
-input {
+input,
+select {
   width: 100%;
   padding: 0.9rem 1rem;
   border: 1px solid var(--border);

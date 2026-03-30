@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 STRICT_MODEL_CONFIG = ConfigDict(extra="forbid")
+RequestMode = Literal["issue_token_now", "register_interest"]
 
 
 def normalize_verification_code(value: str) -> str:
@@ -27,6 +28,7 @@ class AccessRequestCreate(BaseModel):
 
     email: EmailStr
     name: str = ""
+    request_mode: RequestMode = "issue_token_now"
     site_metadata: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("name")
@@ -55,9 +57,10 @@ class AccessRequestRecord(BaseModel):
     request_id: str
     email: str
     name: str
+    request_mode: RequestMode = "issue_token_now"
     site_metadata: dict[str, str] = Field(default_factory=dict)
     client_ip: str
-    status: Literal["pending_verification", "token_issued"]
+    status: Literal["pending_verification", "interest_registered", "token_issued"]
     verification_code_hash: str
     requested_at: datetime
     verification_expires_at: datetime
@@ -91,6 +94,15 @@ class InviteIssueResponse(BaseModel):
     created_at: datetime
     expires_at: datetime | None = None
     used_count: int = Field(default=0)
+
+
+class VerificationOutcome(BaseModel):
+    """Successful verification result for either request path."""
+
+    model_config = STRICT_MODEL_CONFIG
+
+    request_mode: RequestMode
+    invite: InviteIssueResponse | None = None
 
 
 class HealthResponse(BaseModel):

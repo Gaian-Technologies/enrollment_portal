@@ -19,6 +19,13 @@ def _get_int(name: str, default: int) -> int:
     return int(os.getenv(name, str(default)))
 
 
+def _get_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _get_aws_region() -> str:
     for name in ("AWS_REGION", "AWS_DEFAULT_REGION"):
         value = os.getenv(name)
@@ -47,6 +54,7 @@ class Settings:
     ses_configuration_set: str
     turnstile_site_key: str
     turnstile_secret_key: str
+    enable_register_interest_flow: bool
     site_metadata_fields: tuple[SiteMetadataField, ...]
 
     @classmethod
@@ -68,6 +76,7 @@ class Settings:
             ses_configuration_set=os.getenv("ENROLLMENT_PORTAL_SES_CONFIGURATION_SET", "").strip(),
             turnstile_site_key=_get_required("ENROLLMENT_PORTAL_TURNSTILE_SITE_KEY"),
             turnstile_secret_key=_get_required("ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY"),
+            enable_register_interest_flow=_get_bool("ENROLLMENT_PORTAL_ENABLE_REGISTER_INTEREST_FLOW", False),
             site_metadata_fields=load_site_metadata_fields(
                 os.getenv("ENROLLMENT_PORTAL_SITE_METADATA_FIELDS", "")
             ),

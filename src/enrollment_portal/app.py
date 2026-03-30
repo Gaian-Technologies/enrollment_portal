@@ -76,6 +76,24 @@ def _empty_metadata_form_values(settings: Settings) -> dict[str, str]:
     return {field.key: "" for field in settings.site_metadata_fields}
 
 
+def _request_access_lede(settings: Settings) -> str:
+    if settings.enable_register_interest_flow:
+        return (
+            "Verify your email to continue. If Home Assistant is ready, the portal can issue an "
+            "enrollment token now. Otherwise you can just register interest and we will be in touch."
+        )
+    return (
+        "Enter your email address, an optional name, and any optional site details to receive a "
+        "one-time verification code and enrollment token."
+    )
+
+
+def _verify_lede(settings: Settings) -> str:
+    if settings.enable_register_interest_flow:
+        return "Enter the verification code from your email to continue."
+    return "Enter the verification code from your email to receive an enrollment token."
+
+
 def _country_field_key(settings: Settings) -> str | None:
     field = get_country_field(settings.site_metadata_fields)
     return field.key if field is not None else None
@@ -113,6 +131,29 @@ def _current_reference_spec(settings: Settings, form_values: dict[str, str]) -> 
     }
 
 
+def _request_access_context(
+    settings: Settings,
+    form_values: dict[str, str],
+    *,
+    form_error: str | None,
+) -> dict[str, object]:
+    return {
+        "page_title": "Enrollment",
+        "site_name": settings.site_name,
+        "request_access_lede": _request_access_lede(settings),
+        "turnstile_site_key": settings.turnstile_site_key,
+        "enable_register_interest_flow": settings.enable_register_interest_flow,
+        "metadata_fields": settings.site_metadata_fields,
+        "country_options": COUNTRY_NAMES,
+        "country_field_key": _country_field_key(settings),
+        "country_reference_enabled": _country_reference_enabled(settings),
+        "country_reference_specs_json": _country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
+        "current_reference_spec": _current_reference_spec(settings, form_values),
+        "form_values": form_values,
+        "form_error": form_error,
+    }
+
+
 def create_app(settings: Settings) -> FastAPI:
     runtime = PortalRuntime(settings)
 
@@ -138,25 +179,17 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/enroll", response_class=HTMLResponse)
     async def request_access_page(request: Request) -> HTMLResponse:
+        form_values = {
+            "email": "",
+            "name": "",
+            "request_mode": "",
+            "site_reference_value": "",
+            **_empty_metadata_form_values(settings),
+        }
         return _render_template(
             request,
             "request_access.html",
-            page_title="Enrollment",
-            site_name=settings.site_name,
-            turnstile_site_key=settings.turnstile_site_key,
-            metadata_fields=settings.site_metadata_fields,
-            country_options=COUNTRY_NAMES,
-            country_field_key=_country_field_key(settings),
-            country_reference_enabled=_country_reference_enabled(settings),
-            country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
-            current_reference_spec=None,
-            form_values={
-                "email": "",
-                "name": "",
-                "site_reference_value": "",
-                **_empty_metadata_form_values(settings),
-            },
-            form_error=None,
+            **_request_access_context(settings, form_values, form_error=None),
         )
 
     @app.post("/enroll", response_class=HTMLResponse)
@@ -164,6 +197,11 @@ def create_app(settings: Settings) -> FastAPI:
         form = await request.form()
         email = str(form.get("email", "") or "")
         name = str(form.get("name", "") or "")
+        request_mode = (
+            str(form.get("request_mode", "") or "")
+            if settings.enable_register_interest_flow
+            else "issue_token_now"
+        )
         turnstile_response = str(form.get("cf-turnstile-response", "") or "")
         site_reference_value = str(form.get("site_reference_value", "") or "")
         metadata_values = {
@@ -173,9 +211,22 @@ def create_app(settings: Settings) -> FastAPI:
         form_values = {
             "email": email,
             "name": name,
+            "request_mode": request_mode,
             "site_reference_value": site_reference_value,
             **metadata_values,
         }
+
+        if settings.enable_register_interest_flow and request_mode not in {"issue_token_now", "register_interest"}:
+            return _render_template(
+                request,
+                "request_access.html",
+                **_request_access_context(
+                    settings,
+                    form_values,
+                    form_error="Choose whether you want an enrollment token now or just want updates for later setup.",
+                ),
+                status_code=400,
+            )
 
         try:
             normalized_metadata = normalize_site_metadata(settings.site_metadata_fields, metadata_values)
@@ -193,6 +244,7 @@ def create_app(settings: Settings) -> FastAPI:
             payload = AccessRequestCreate(
                 email=email,
                 name=name,
+                request_mode=request_mode,
                 site_metadata={
                     **normalized_metadata,
                     **site_reference_metadata,
@@ -203,119 +255,53 @@ def create_app(settings: Settings) -> FastAPI:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Enrollment",
-                site_name=settings.site_name,
-                turnstile_site_key=settings.turnstile_site_key,
-                metadata_fields=settings.site_metadata_fields,
-                country_options=COUNTRY_NAMES,
-                country_field_key=_country_field_key(settings),
-                country_reference_enabled=_country_reference_enabled(settings),
-                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
-                current_reference_spec=_current_reference_spec(settings, form_values),
-                form_values=form_values,
-                form_error="Too many requests. Wait and try again later.",
+                **_request_access_context(settings, form_values, form_error="Too many requests. Wait and try again later."),
                 status_code=429,
             )
         except HumanVerificationFailed:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Enrollment",
-                site_name=settings.site_name,
-                turnstile_site_key=settings.turnstile_site_key,
-                metadata_fields=settings.site_metadata_fields,
-                country_options=COUNTRY_NAMES,
-                country_field_key=_country_field_key(settings),
-                country_reference_enabled=_country_reference_enabled(settings),
-                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
-                current_reference_spec=_current_reference_spec(settings, form_values),
-                form_values=form_values,
-                form_error="Complete the human verification and try again.",
+                **_request_access_context(settings, form_values, form_error="Complete the human verification and try again."),
                 status_code=400,
             )
         except HumanVerificationUnavailable:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Enrollment",
-                site_name=settings.site_name,
-                turnstile_site_key=settings.turnstile_site_key,
-                metadata_fields=settings.site_metadata_fields,
-                country_options=COUNTRY_NAMES,
-                country_field_key=_country_field_key(settings),
-                country_reference_enabled=_country_reference_enabled(settings),
-                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
-                current_reference_spec=_current_reference_spec(settings, form_values),
-                form_values=form_values,
-                form_error="Human verification is temporarily unavailable. Try again shortly.",
+                **_request_access_context(settings, form_values, form_error="Human verification is temporarily unavailable. Try again shortly."),
                 status_code=502,
             )
         except EmailDeliveryError:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Enrollment",
-                site_name=settings.site_name,
-                turnstile_site_key=settings.turnstile_site_key,
-                metadata_fields=settings.site_metadata_fields,
-                country_options=COUNTRY_NAMES,
-                country_field_key=_country_field_key(settings),
-                country_reference_enabled=_country_reference_enabled(settings),
-                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
-                current_reference_spec=_current_reference_spec(settings, form_values),
-                form_values=form_values,
-                form_error="Could not deliver the verification email. The portal SES configuration or AWS access is unavailable.",
+                **_request_access_context(
+                    settings,
+                    form_values,
+                    form_error="Could not deliver the verification email. The portal SES configuration or AWS access is unavailable.",
+                ),
                 status_code=502,
             )
         except SiteMetadataValidationError as err:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Enrollment",
-                site_name=settings.site_name,
-                turnstile_site_key=settings.turnstile_site_key,
-                metadata_fields=settings.site_metadata_fields,
-                country_options=COUNTRY_NAMES,
-                country_field_key=_country_field_key(settings),
-                country_reference_enabled=_country_reference_enabled(settings),
-                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
-                current_reference_spec=_current_reference_spec(settings, form_values),
-                form_values=form_values,
-                form_error=str(err),
+                **_request_access_context(settings, form_values, form_error=str(err)),
                 status_code=400,
             )
         except ElectricityReferenceValidationError as err:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Enrollment",
-                site_name=settings.site_name,
-                turnstile_site_key=settings.turnstile_site_key,
-                metadata_fields=settings.site_metadata_fields,
-                country_options=COUNTRY_NAMES,
-                country_field_key=_country_field_key(settings),
-                country_reference_enabled=_country_reference_enabled(settings),
-                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
-                current_reference_spec=_current_reference_spec(settings, form_values),
-                form_values=form_values,
-                form_error=str(err),
+                **_request_access_context(settings, form_values, form_error=str(err)),
                 status_code=400,
             )
         except ValidationError:
             return _render_template(
                 request,
                 "request_access.html",
-                page_title="Enrollment",
-                site_name=settings.site_name,
-                turnstile_site_key=settings.turnstile_site_key,
-                metadata_fields=settings.site_metadata_fields,
-                country_options=COUNTRY_NAMES,
-                country_field_key=_country_field_key(settings),
-                country_reference_enabled=_country_reference_enabled(settings),
-                country_reference_specs_json=_country_reference_specs_json() if _country_reference_enabled(settings) else "{}",
-                current_reference_spec=_current_reference_spec(settings, form_values),
-                form_values=form_values,
-                form_error="Enter a valid email address and keep optional fields short.",
+                **_request_access_context(settings, form_values, form_error="Enter a valid email address and keep optional fields short."),
                 status_code=400,
             )
 
@@ -339,7 +325,7 @@ def create_app(settings: Settings) -> FastAPI:
             page_title="Enter verification code",
             site_name=settings.site_name,
             heading="Verify email",
-            lede="Enter the verification code from your email to receive an enrollment token.",
+            lede=_verify_lede(settings),
             email=None,
             form_values={"code": ""},
             form_error=None,
@@ -350,7 +336,7 @@ def create_app(settings: Settings) -> FastAPI:
         form_values = {"code": code}
         try:
             payload = VerificationCodeSubmit(code=code)
-            invite = await runtime.verify_request(payload)
+            outcome = await runtime.verify_request(payload)
         except VerificationError:
             return _render_template(
                 request,
@@ -358,7 +344,7 @@ def create_app(settings: Settings) -> FastAPI:
                 page_title="Enter verification code",
                 site_name=settings.site_name,
                 heading="Verify email",
-                lede="Enter the verification code from your email to receive an enrollment token.",
+                lede=_verify_lede(settings),
                 email=None,
                 form_values=form_values,
                 form_error="This verification code is invalid, expired, or already used.",
@@ -371,7 +357,7 @@ def create_app(settings: Settings) -> FastAPI:
                 page_title="Enter verification code",
                 site_name=settings.site_name,
                 heading="Verify email",
-                lede="Enter the verification code from your email to receive an enrollment token.",
+                lede=_verify_lede(settings),
                 email=None,
                 form_values=form_values,
                 form_error="Enter the 12-character verification code from your email.",
@@ -388,13 +374,21 @@ def create_app(settings: Settings) -> FastAPI:
                 status_code=502,
             )
 
+        if outcome.request_mode == "register_interest":
+            return _render_template(
+                request,
+                "interest_registered.html",
+                page_title="Details received",
+                site_name=settings.site_name,
+            )
+
         return _render_template(
             request,
             "token_issued.html",
             page_title="Enrollment token issued",
             site_name=settings.site_name,
             hub_url=settings.public_base_url,
-            enrollment_token=invite.enrollment_token,
+            enrollment_token=outcome.invite.enrollment_token,
             invite_lifetime=_format_invite_lifetime(settings.invite_expires_hours),
         )
 

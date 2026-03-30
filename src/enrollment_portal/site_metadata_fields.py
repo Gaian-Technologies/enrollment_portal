@@ -10,7 +10,7 @@ from typing import Any, Literal
 import pycountry
 
 FIELD_KEY_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
-SUPPORTED_FIELD_TYPES = {"text", "country"}
+SUPPORTED_FIELD_TYPES = {"text", "country", "select"}
 
 
 class SiteMetadataValidationError(Exception):
@@ -23,11 +23,12 @@ class SiteMetadataField:
 
     key: str
     label: str
-    field_type: Literal["text", "country"]
+    field_type: Literal["text", "country", "select"]
     required: bool = False
     placeholder: str = ""
     description: str = ""
     enable_electricity_reference: bool = False
+    options: tuple[str, ...] = ()
 
 
 COUNTRY_NAMES: tuple[str, ...] = tuple(
@@ -86,13 +87,34 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
             raise ValueError("Each site metadata field requires a label")
         if field_type not in SUPPORTED_FIELD_TYPES:
             raise ValueError(f"Unsupported site metadata field type: {field_type}")
-        normalized_type: Literal["text", "country"] = "country" if field_type == "country" else "text"
+        options = item.get("options", [])
+        if field_type == "country":
+            normalized_type: Literal["text", "country", "select"] = "country"
+        elif field_type == "select":
+            normalized_type = "select"
+        else:
+            normalized_type = "text"
         if normalized_type == "country":
             country_field_count += 1
             if country_field_count > 1:
                 raise ValueError("Only one country field is supported")
         elif enable_electricity_reference:
             raise ValueError("enable_electricity_reference is only supported on country fields")
+
+        normalized_options: tuple[str, ...] = ()
+        if normalized_type == "select":
+            if not isinstance(options, list) or not options:
+                raise ValueError("Select fields require a non-empty options list")
+            cleaned_options = tuple(
+                str(option).strip()
+                for option in options
+                if str(option).strip()
+            )
+            if not cleaned_options:
+                raise ValueError("Select fields require at least one non-empty option")
+            if len(set(cleaned_options)) != len(cleaned_options):
+                raise ValueError("Select field options must be unique")
+            normalized_options = cleaned_options
 
         fields.append(
             SiteMetadataField(
@@ -103,6 +125,7 @@ def load_site_metadata_fields(raw_value: str) -> tuple[SiteMetadataField, ...]:
                 placeholder=placeholder,
                 description=description,
                 enable_electricity_reference=enable_electricity_reference,
+                options=normalized_options,
             )
         )
         seen_keys.add(key)
@@ -128,6 +151,10 @@ def normalize_site_metadata(
             normalized[field.key] = _normalize_country(raw_value)
             continue
 
+        if field.field_type == "select":
+            normalized[field.key] = _normalize_select(field, raw_value)
+            continue
+
         if len(raw_value) > 256:
             raise SiteMetadataValidationError(f"{field.label} must be 256 characters or fewer.")
         normalized[field.key] = raw_value
@@ -150,3 +177,10 @@ def _normalize_country(value: str) -> str:
     except LookupError as err:
         raise SiteMetadataValidationError("Select a valid country from the list.") from err
     return match.name
+
+
+def _normalize_select(field: SiteMetadataField, value: str) -> str:
+    for option in field.options:
+        if value == option:
+            return option
+    raise SiteMetadataValidationError(f"Select a valid {field.label.lower()} option.")

@@ -15,7 +15,7 @@
     <main class="shell">
       <section class="card">
         <h1>Enrollment</h1>
-        <p class="lede">Enter your email address, an optional name, and any optional site details to receive a one-time verification code and enrollment token.</p>
+        <p class="lede">{{ request_access_lede }}</p>
         {% if form_error %}
         <div class="notice error">{{ form_error }}</div>
         {% endif %}
@@ -28,11 +28,37 @@
             <span>Name</span>
             <input type="text" name="name" value="{{ form_values.name }}" autocomplete="name">
           </label>
+          {% if enable_register_interest_flow %}
+          <fieldset class="choice-group">
+            <legend>What are you here for?</legend>
+            <label class="choice-option">
+              <input type="radio" name="request_mode" value="issue_token_now" {% if form_values.request_mode == "issue_token_now" %}checked{% endif %} required>
+              <span>
+                <strong>Issue an enrollment token now</strong>
+                <small class="field-help">Choose this if Home Assistant is ready and you want to continue setup now.</small>
+              </span>
+            </label>
+            <label class="choice-option">
+              <input type="radio" name="request_mode" value="register_interest" {% if form_values.request_mode == "register_interest" %}checked{% endif %} required>
+              <span>
+                <strong>Register interest for later</strong>
+                <small class="field-help">Choose this if you do not have Home Assistant ready yet and just want follow-up information later.</small>
+              </span>
+            </label>
+          </fieldset>
+          {% endif %}
           {% for field in metadata_fields %}
           <label>
             <span>{{ field.label }}{% if not field.required %} (optional){% endif %}</span>
             {% if field.field_type == "country" %}
             <input type="text" name="{{ field.key }}" value="{{ form_values[field.key] }}" list="country-options" autocomplete="country-name" data-country-field="true" {% if field.required %}required{% endif %}>
+            {% elif field.field_type == "select" %}
+            <select name="{{ field.key }}" {% if field.required %}required{% endif %}>
+              <option value="">Select an option</option>
+              {% for option in field.options %}
+              <option value="{{ option }}" {% if form_values[field.key] == option %}selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
             {% else %}
             <input type="text" name="{{ field.key }}" value="{{ form_values[field.key] }}" placeholder="{{ field.placeholder }}" {% if field.required %}required{% endif %}>
             {% endif %}

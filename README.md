@@ -1,7 +1,8 @@
 # enrollment_portal
 
-`enrollment_portal` is a small public-facing service that issues
-single-use `data_hub` `enrollment_token` values after email verification.
+`enrollment_portal` is a small public-facing service that verifies email
+addresses and can either issue a single-use `data_hub` `enrollment_token`
+or register interest for later follow-up.
 
 It is intentionally separate from `data_hub`.
 
@@ -11,8 +12,8 @@ The supported workflow is:
 2. user enters an email address, an optional name, and optional site metadata such as country
 3. portal sends a verification code through Amazon SES
 4. user enters that code in the portal
-5. portal calls the private `data_hub` admin invite API
-6. portal shows a single-use short-lived `enrollment_token`
+5. if the user is ready now, the portal calls the private `data_hub` admin invite API
+6. the portal either shows a single-use short-lived `enrollment_token` or confirms that the user's details were recorded for later follow-up
 
 The browser never sees the `data_hub` admin bearer token.
 
@@ -30,6 +31,7 @@ The required values are:
 - `ENROLLMENT_PORTAL_SES_FROM_EMAIL`
 - `ENROLLMENT_PORTAL_TURNSTILE_SITE_KEY`
 - `ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY`
+- `ENROLLMENT_PORTAL_ENABLE_REGISTER_INTEREST_FLOW`
 - `ENROLLMENT_PORTAL_SITE_METADATA_FIELDS`
 
 The supported delivery path is Amazon SES using the standard AWS credential
@@ -80,6 +82,12 @@ The example environment file uses Cloudflare's official Turnstile test keys so
 the request form can be validated locally. Replace them with a real Turnstile
 widget before public rollout.
 
+Set `ENROLLMENT_PORTAL_ENABLE_REGISTER_INTEREST_FLOW=true` to let verified users
+choose between:
+
+- issuing an enrollment token now
+- registering interest for later follow-up without issuing a token
+
 ## Turnstile Setup
 
 Create one Cloudflare Turnstile widget for the public site hostname.
@@ -118,16 +126,18 @@ The supported field types are:
 
 - `text`
 - `country`
+- `select`
 
 Example:
 
 ```dotenv
-ENROLLMENT_PORTAL_SITE_METADATA_FIELDS=[{"key":"country","label":"Country","type":"country","required":false},{"key":"study_group","label":"Study group","type":"text","required":false,"description":"Optional study grouping label."}]
+ENROLLMENT_PORTAL_SITE_METADATA_FIELDS=[{"key":"country","label":"Country","type":"country","required":false},{"key":"study_group","label":"Study group","type":"text","required":false,"description":"Optional study grouping label."},{"key":"household_role","label":"Relationship to the property","type":"select","required":false,"options":["Homeowner","Tenant","Landlord/property owner who is renting out"]}]
 ```
 
 `country` uses a native searchable country picker backed by a canonical list,
 rejects invalid values, and stores a canonical country name.
 `text` uses a simple text input and stores the trimmed submitted value.
+`select` uses a validated dropdown and stores one of the configured option strings.
 Any configured `text` field may also include an optional `description` string.
 
 To add the optional country-specific electricity identifier field, enable it on
@@ -162,7 +172,8 @@ The validated browser flow is:
 5. receive the email verification code
 6. open `https://example.com/enroll/verify`
 7. paste the code
-8. copy the issued `enrollment_token`
+8. either copy the issued `enrollment_token` or finish on the verified
+   interest-registration confirmation page
 
 For local Docker testing before EC2, also set:
 
