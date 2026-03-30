@@ -55,6 +55,7 @@ class Settings:
     turnstile_site_key: str
     turnstile_secret_key: str
     enable_register_interest_flow: bool
+    show_hub_url_on_token_page: bool
     site_metadata_fields: tuple[SiteMetadataField, ...]
 
     @classmethod
@@ -77,6 +78,7 @@ class Settings:
             turnstile_site_key=_get_required("ENROLLMENT_PORTAL_TURNSTILE_SITE_KEY"),
             turnstile_secret_key=_get_required("ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY"),
             enable_register_interest_flow=_get_bool("ENROLLMENT_PORTAL_ENABLE_REGISTER_INTEREST_FLOW", False),
+            show_hub_url_on_token_page=_get_bool("ENROLLMENT_PORTAL_SHOW_HUB_URL_ON_TOKEN_PAGE", True),
             site_metadata_fields=load_site_metadata_fields(
                 os.getenv("ENROLLMENT_PORTAL_SITE_METADATA_FIELDS", "")
             ),

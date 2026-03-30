@@ -10,9 +10,13 @@
     <main class="shell">
       <section class="card">
         <h1>Enrollment token issued</h1>
+        {% if show_hub_url_on_token_page %}
         <p class="lede">Use this Hub URL and enrollment token in the Home Assistant setup flow.</p>
         <p><strong>Hub URL</strong></p>
         <pre class="token">{{ hub_url }}</pre>
+        {% else %}
+        <p class="lede">Use this enrollment token in the Home Assistant setup flow.</p>
+        {% endif %}
         <p><strong>Enrollment token</strong></p>
         <pre class="token">{{ enrollment_token }}</pre>
         <p>This token expires in {{ invite_lifetime }}.</p>

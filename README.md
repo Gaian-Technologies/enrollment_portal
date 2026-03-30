@@ -32,6 +32,7 @@ The required values are:
 - `ENROLLMENT_PORTAL_TURNSTILE_SITE_KEY`
 - `ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY`
 - `ENROLLMENT_PORTAL_ENABLE_REGISTER_INTEREST_FLOW`
+- `ENROLLMENT_PORTAL_SHOW_HUB_URL_ON_TOKEN_PAGE`
 - `ENROLLMENT_PORTAL_SITE_METADATA_FIELDS`
 
 The supported delivery path is Amazon SES using the standard AWS credential
@@ -87,6 +88,11 @@ choose between:
 
 - issuing an enrollment token now
 - registering interest for later follow-up without issuing a token
+
+`ENROLLMENT_PORTAL_SHOW_HUB_URL_ON_TOKEN_PAGE` defaults to `true`.
+Set it to `false` for project-specific deployments where the Home Assistant
+integration already knows the fixed Hub URL and only the enrollment token
+should be shown.
 
 ## Turnstile Setup
 
