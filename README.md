@@ -119,6 +119,18 @@ It is disabled by default. To enable it, set:
 - `ENROLLMENT_PORTAL_OPERATOR_USERNAME=<operator-username>`
 - `ENROLLMENT_PORTAL_OPERATOR_PASSWORD=<operator-password>`
 
+For production, keep those values in a separate operator-managed env file
+outside Git, for example:
+
+- [`/ssd2/Gaian/Workspace/enrollment_portal/.env.prod.local`](/ssd2/Gaian/Workspace/enrollment_portal/.env.prod.local)
+
+That file is ignored by Git and can be synced with:
+
+```bash
+bash /ssd2/Gaian/Workspace/infra/scripts/sync_ec2_env.sh enrollment_portal \
+  --env-file /ssd2/Gaian/Workspace/enrollment_portal/.env.prod.local
+```
+
 The dashboard uses HTTP basic auth and joins:
 
 - portal request records
