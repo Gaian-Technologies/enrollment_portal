@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import csv
 import json
+from io import StringIO
 from pathlib import Path
+import secrets
 
-from fastapi import FastAPI, Form, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -21,7 +25,9 @@ from .electricity_reference_specs import (
     normalize_country_site_reference,
 )
 from .hub_client import HubAdminError
+from .hub_client import list_site_statuses
 from .models import AccessRequestCreate, HealthResponse, VerificationCodeSubmit
+from .operator_data import build_operator_dashboard
 from .runtime import PortalRuntime, RateLimitError, VerificationError
 from .site_metadata_fields import (
     COUNTRY_NAMES,
@@ -168,6 +174,7 @@ def _request_access_context(
 
 def create_app(settings: Settings) -> FastAPI:
     runtime = PortalRuntime(settings)
+    operator_security = HTTPBasic()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -424,5 +431,109 @@ def create_app(settings: Settings) -> FastAPI:
     @app.post("/verify", response_class=HTMLResponse)
     async def legacy_verify_submit(request: Request, code: str = Form(...)) -> HTMLResponse:
         return await verify_request(request, code)
+
+    if settings.enable_operator_ui:
+
+        def require_operator(
+            credentials: HTTPBasicCredentials = Depends(operator_security),
+        ) -> None:
+            username_ok = secrets.compare_digest(credentials.username, settings.operator_username)
+            password_ok = secrets.compare_digest(credentials.password, settings.operator_password)
+            if username_ok and password_ok:
+                return
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_operator_credentials",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+
+        async def _operator_dashboard_context() -> dict[str, object]:
+            requests = await runtime.store.list_requests()
+            site_statuses = await list_site_statuses(settings)
+            dashboard = build_operator_dashboard(requests, site_statuses)
+            return {
+                "page_title": "Operator dashboard",
+                "site_name": settings.site_name,
+                "dashboard": dashboard,
+            }
+
+        @app.get("/ops", response_class=HTMLResponse)
+        async def operator_dashboard_page(
+            request: Request,
+            _operator: None = Depends(require_operator),
+        ) -> HTMLResponse:
+            try:
+                context = await _operator_dashboard_context()
+            except HubAdminError:
+                return _render_template(
+                    request,
+                    "error.html",
+                    page_title="Operator dashboard unavailable",
+                    site_name=settings.site_name,
+                    title="Could not load operator data",
+                    message="The portal could not load linked Hub site data right now.",
+                    status_code=502,
+                )
+            return _render_template(request, "operator_dashboard.html", **context)
+
+        @app.get("/ops/export.csv", response_class=PlainTextResponse)
+        async def operator_dashboard_csv(
+            _operator: None = Depends(require_operator),
+        ) -> PlainTextResponse:
+            try:
+                context = await _operator_dashboard_context()
+            except HubAdminError as err:
+                raise HTTPException(status_code=502, detail="failed_to_load_operator_data") from err
+            dashboard = context["dashboard"]
+            buffer = StringIO()
+            writer = csv.writer(buffer)
+            writer.writerow(
+                [
+                    "requested_at",
+                    "issued_at",
+                    "status",
+                    "request_mode",
+                    "email",
+                    "name",
+                    "country",
+                    "property_roles",
+                    "site_reference_scheme",
+                    "site_reference_value",
+                    "metadata_summary",
+                    "invite_id",
+                    "site_id",
+                    "connected",
+                    "last_telemetry_at",
+                    "last_heartbeat_at",
+                    "request_id",
+                ]
+            )
+            for row in dashboard.rows:
+                writer.writerow(
+                    [
+                        row.requested_at.isoformat(),
+                        row.issued_at.isoformat() if row.issued_at is not None else "",
+                        row.status,
+                        row.request_mode,
+                        row.email,
+                        row.name,
+                        row.country,
+                        row.property_roles,
+                        row.site_reference_scheme,
+                        row.site_reference_value,
+                        row.metadata_summary,
+                        row.invite_id,
+                        row.site_id,
+                        "yes" if row.connected else "no",
+                        row.last_telemetry_at,
+                        row.last_heartbeat_at,
+                        row.request_id,
+                    ]
+                )
+            return PlainTextResponse(
+                content=buffer.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": 'attachment; filename="operator_dashboard.csv"'},
+            )
 
     return app

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }} - {{ site_name }}</title>
+    <link rel="stylesheet" href="/enroll/static/main.css?v={{ static_asset_version }}">
+  </head>
+  <body>
+    <main class="shell shell--wide">
+      <section class="card card--wide">
+        <div class="ops-header">
+          <div>
+            <p class="ops-kicker">Internal Operator View</p>
+            <h1>Enrollment operator dashboard</h1>
+            <p class="lede">
+              This internal-only view joins verified enrollment requests with linked Hub sites using
+              <code>invite_id</code>.
+            </p>
+          </div>
+          <a class="button-link" href="/ops/export.csv">Export CSV</a>
+        </div>
+
+        <section class="ops-summary-grid">
+          <article class="ops-summary-card">
+            <span class="ops-summary-label">Total requests</span>
+            <strong class="ops-summary-value">{{ dashboard.total_requests }}</strong>
+          </article>
+          <article class="ops-summary-card">
+            <span class="ops-summary-label">Verified people</span>
+            <strong class="ops-summary-value">{{ dashboard.verified_people }}</strong>
+          </article>
+          <article class="ops-summary-card">
+            <span class="ops-summary-label">Token issued</span>
+            <strong class="ops-summary-value">{{ dashboard.token_issued }}</strong>
+          </article>
+          <article class="ops-summary-card">
+            <span class="ops-summary-label">Interest registered</span>
+            <strong class="ops-summary-value">{{ dashboard.interest_registered }}</strong>
+          </article>
+          <article class="ops-summary-card">
+            <span class="ops-summary-label">Linked sites</span>
+            <strong class="ops-summary-value">{{ dashboard.linked_sites }}</strong>
+          </article>
+          <article class="ops-summary-card">
+            <span class="ops-summary-label">Connected sites</span>
+            <strong class="ops-summary-value">{{ dashboard.connected_sites }}</strong>
+          </article>
+        </section>
+
+        <div class="ops-table-shell">
+          <table class="ops-table">
+            <thead>
+              <tr>
+                <th>Requested</th>
+                <th>Status</th>
+                <th>Mode</th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Country</th>
+                <th>Property roles</th>
+                <th>Reference</th>
+                <th>Linked site</th>
+                <th>Connected</th>
+                <th>Last telemetry</th>
+                <th>Metadata</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in dashboard.rows %}
+              <tr>
+                <td>{{ row.requested_at.strftime("%Y-%m-%d %H:%M UTC") }}</td>
+                <td>{{ row.status }}</td>
+                <td>{{ row.request_mode }}</td>
+                <td>{{ row.email }}</td>
+                <td>{{ row.name or "—" }}</td>
+                <td>{{ row.country or "—" }}</td>
+                <td>{{ row.property_roles or "—" }}</td>
+                <td>
+                  {% if row.site_reference_scheme and row.site_reference_value %}
+                  {{ row.site_reference_scheme }}: {{ row.site_reference_value }}
+                  {% else %}
+                  —
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.site_id %}
+                  <div>{{ row.site_id }}</div>
+                  <small class="field-help">{{ row.invite_id }}</small>
+                  {% else %}
+                  <small class="field-help">{{ row.invite_id or "—" }}</small>
+                  {% endif %}
+                </td>
+                <td>{{ "yes" if row.connected else "no" }}</td>
+                <td>{{ row.last_telemetry_at or "—" }}</td>
+                <td>{{ row.metadata_summary or "—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

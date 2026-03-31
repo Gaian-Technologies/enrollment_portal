@@ -42,6 +42,12 @@ The required values are:
 - `ENROLLMENT_PORTAL_SHOW_HUB_URL_ON_TOKEN_PAGE`
 - `ENROLLMENT_PORTAL_SITE_METADATA_FIELDS`
 
+Optional internal-only operator values are:
+
+- `ENROLLMENT_PORTAL_ENABLE_OPERATOR_UI`
+- `ENROLLMENT_PORTAL_OPERATOR_USERNAME`
+- `ENROLLMENT_PORTAL_OPERATOR_PASSWORD`
+
 The supported delivery path is Amazon SES using the standard AWS credential
 chain.
 
@@ -100,6 +106,45 @@ choose between:
 Set it to `false` for project-specific deployments where the Home Assistant
 integration already knows the fixed Hub URL and only the enrollment token
 should be shown.
+
+## Internal Operator Dashboard
+
+The portal also supports one internal-only operator dashboard at:
+
+- `/ops`
+
+It is disabled by default. To enable it, set:
+
+- `ENROLLMENT_PORTAL_ENABLE_OPERATOR_UI=true`
+- `ENROLLMENT_PORTAL_OPERATOR_USERNAME=<operator-username>`
+- `ENROLLMENT_PORTAL_OPERATOR_PASSWORD=<operator-password>`
+
+The dashboard uses HTTP basic auth and joins:
+
+- portal request records
+- Hub site status records
+
+through the shared `invite_id`.
+
+It shows:
+
+- email
+- name
+- request mode
+- request status
+- country
+- property roles
+- site reference data
+- linked `site_id`
+- connected status
+- last telemetry time
+
+It also provides a CSV export at:
+
+- `/ops/export.csv`
+
+This route is operator-facing only. Do not expose it publicly without a
+network or reverse-proxy access policy in front of it.
 
 ## Turnstile Setup
 

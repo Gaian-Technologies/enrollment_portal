@@ -75,6 +75,11 @@ class RequestStore:
                 requested_after.isoformat(),
             )
 
+    async def list_requests(self) -> list[AccessRequestRecord]:
+        async with self._lock:
+            rows = await asyncio.to_thread(self._list_requests_sync)
+        return [AccessRequestRecord.model_validate(row) for row in rows]
+
     def _initialize(self) -> None:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self._db_path) as connection:
@@ -179,6 +184,31 @@ class RequestStore:
             )
             connection.commit()
 
+    def _decode_row(self, row: sqlite3.Row) -> dict:
+        payload = dict(row)
+        raw_metadata = payload.pop("site_metadata_json", "")
+        try:
+            decoded = json.loads(raw_metadata) if raw_metadata else {}
+        except json.JSONDecodeError:
+            decoded = {}
+        payload["site_metadata"] = {
+            str(key): str(value)
+            for key, value in decoded.items()
+        } if isinstance(decoded, dict) else {}
+        return payload
+
+    def _list_requests_sync(self) -> list[dict]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT request_id, email, name, request_mode, site_metadata_json, client_ip, status, verification_code_hash,
+                       requested_at, verification_expires_at, issued_at, invite_id
+                FROM access_requests
+                ORDER BY requested_at DESC
+                """
+            ).fetchall()
+        return [self._decode_row(row) for row in rows]
+
     def _fetch_request_by_verification_code_hash_sync(self, verification_code_hash: str) -> dict | None:
         with self._connect() as connection:
             row = connection.execute(
@@ -192,17 +222,7 @@ class RequestStore:
             ).fetchone()
         if row is None:
             return None
-        payload = dict(row)
-        raw_metadata = payload.pop("site_metadata_json", "")
-        try:
-            decoded = json.loads(raw_metadata) if raw_metadata else {}
-        except json.JSONDecodeError:
-            decoded = {}
-        payload["site_metadata"] = {
-            str(key): str(value)
-            for key, value in decoded.items()
-        } if isinstance(decoded, dict) else {}
-        return payload
+        return self._decode_row(row)
 
     def _mark_request_completed_sync(
         self,

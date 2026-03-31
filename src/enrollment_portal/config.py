@@ -26,6 +26,11 @@ def _get_bool(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _get_optional(name: str) -> str:
+    value = os.getenv(name)
+    return value.strip() if value is not None else ""
+
+
 def _get_aws_region() -> str:
     for name in ("AWS_REGION", "AWS_DEFAULT_REGION"):
         value = os.getenv(name)
@@ -56,10 +61,22 @@ class Settings:
     turnstile_secret_key: str
     enable_register_interest_flow: bool
     show_hub_url_on_token_page: bool
+    enable_operator_ui: bool
+    operator_username: str
+    operator_password: str
     site_metadata_fields: tuple[SiteMetadataField, ...]
 
     @classmethod
     def from_env(cls) -> "Settings":
+        enable_operator_ui = _get_bool("ENROLLMENT_PORTAL_ENABLE_OPERATOR_UI", False)
+        operator_username = _get_optional("ENROLLMENT_PORTAL_OPERATOR_USERNAME")
+        operator_password = _get_optional("ENROLLMENT_PORTAL_OPERATOR_PASSWORD")
+        if enable_operator_ui and (not operator_username or not operator_password):
+            raise ValueError(
+                "ENROLLMENT_PORTAL_ENABLE_OPERATOR_UI requires both "
+                "ENROLLMENT_PORTAL_OPERATOR_USERNAME and ENROLLMENT_PORTAL_OPERATOR_PASSWORD"
+            )
+
         return cls(
             bind_host=os.getenv("ENROLLMENT_PORTAL_BIND_HOST", "0.0.0.0"),
             bind_port=_get_int("ENROLLMENT_PORTAL_BIND_PORT", 8100),
@@ -79,6 +96,9 @@ class Settings:
             turnstile_secret_key=_get_required("ENROLLMENT_PORTAL_TURNSTILE_SECRET_KEY"),
             enable_register_interest_flow=_get_bool("ENROLLMENT_PORTAL_ENABLE_REGISTER_INTEREST_FLOW", False),
             show_hub_url_on_token_page=_get_bool("ENROLLMENT_PORTAL_SHOW_HUB_URL_ON_TOKEN_PAGE", True),
+            enable_operator_ui=enable_operator_ui,
+            operator_username=operator_username,
+            operator_password=operator_password,
             site_metadata_fields=load_site_metadata_fields(
                 os.getenv("ENROLLMENT_PORTAL_SITE_METADATA_FIELDS", "")
             ),
