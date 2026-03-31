@@ -30,19 +30,19 @@
           </label>
           {% if enable_register_interest_flow %}
           <fieldset class="choice-group">
-            <legend>What are you here for?</legend>
-            <label class="choice-option">
-              <input type="radio" name="request_mode" value="issue_token_now" {% if form_values.request_mode == "issue_token_now" %}checked{% endif %} required>
-              <span>
-                <strong>Issue an enrollment token now</strong>
-                <small class="field-help">Choose this if you have Home Assistant already and want to setup now.</small>
-              </span>
-            </label>
+            <legend>What would you like to do?</legend>
             <label class="choice-option">
               <input type="radio" name="request_mode" value="register_interest" {% if form_values.request_mode == "register_interest" %}checked{% endif %} required>
               <span>
-                <strong>Register interest for later</strong>
-                <small class="field-help">Choose this if you do not have Home Assistant yet and just want to register your interest.</small>
+                <strong>Register interest free</strong>
+                <small class="field-help">Choose this if you just want updates for now. No Home Assistant setup is required.</small>
+              </span>
+            </label>
+            <label class="choice-option">
+              <input type="radio" name="request_mode" value="issue_token_now" {% if form_values.request_mode == "issue_token_now" %}checked{% endif %} required>
+              <span>
+                <strong>Get setup token now</strong>
+                <small class="field-help">Choose this if Home Assistant is ready and you want to connect data now.</small>
               </span>
             </label>
           </fieldset>

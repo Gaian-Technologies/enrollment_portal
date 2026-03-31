@@ -96,8 +96,8 @@ def _empty_metadata_form_values(settings: Settings) -> dict[str, object]:
 def _request_access_lede(settings: Settings) -> str:
     if settings.enable_register_interest_flow:
         return (
-            "Verify your email to continue. If Home Assistant is ready, the portal can issue an "
-            "enrollment token now. Otherwise you can just register interest and we will be in touch."
+            "Verify your email to continue. You can register interest now with no setup, "
+            "or get a Home Assistant setup token if you are ready to connect data."
         )
     return (
         "Enter your email address, an optional name, and any optional site details to receive a "
@@ -172,6 +172,18 @@ def _request_access_context(
     }
 
 
+def _initial_request_mode(request: Request, settings: Settings) -> str:
+    if not settings.enable_register_interest_flow:
+        return ""
+
+    requested_mode = str(request.query_params.get("mode", "")).strip().lower()
+    if requested_mode == "interest":
+        return "register_interest"
+    if requested_mode == "token":
+        return "issue_token_now"
+    return ""
+
+
 def create_app(settings: Settings) -> FastAPI:
     runtime = PortalRuntime(settings)
     operator_security = HTTPBasic()
@@ -201,7 +213,7 @@ def create_app(settings: Settings) -> FastAPI:
         form_values = {
             "email": "",
             "name": "",
-            "request_mode": "",
+            "request_mode": _initial_request_mode(request, settings),
             "site_reference_value": "",
             **_empty_metadata_form_values(settings),
         }
