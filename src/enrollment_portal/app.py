@@ -415,6 +415,7 @@ def create_app(settings: Settings) -> FastAPI:
                 "interest_registered.html",
                 page_title="Details received",
                 site_name=settings.site_name,
+                home_url=settings.public_base_url,
             )
 
         return _render_template(
@@ -422,6 +423,7 @@ def create_app(settings: Settings) -> FastAPI:
             "token_issued.html",
             page_title="Enrollment token issued",
             site_name=settings.site_name,
+            home_url=settings.public_base_url,
             hub_url=settings.public_base_url,
             show_hub_url_on_token_page=settings.show_hub_url_on_token_page,
             enrollment_token=outcome.invite.enrollment_token,
